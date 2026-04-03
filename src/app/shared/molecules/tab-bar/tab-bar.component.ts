@@ -12,88 +12,105 @@ export interface EntityTab {
   standalone: true,
   imports: [CommonModule, IconComponent],
   template: `
-    @if (tabs.length > 0) {
-      <div class="tab-bar">
-        <div class="tab-bar__scroll">
-          @for (tab of tabs; track tab.entityName) {
-            <div class="tab" [class.tab--active]="tab.active"
-              (click)="tabClicked.emit(tab.entityName)">
-              <span class="tab__name">{{ tab.entityName }}</span>
-              <button class="tab__close" (click)="closeTab($event, tab.entityName)"
-                title="Close tab">
-                <em-icon name="x" [size]="12" />
-              </button>
-            </div>
+    <div class="tab-bar">
+      <div class="tab-bar__scroll">
+        @for (tab of tabs; track tab.entityName; let i = $index) {
+          <!-- Separator between inactive tabs (not before first, not adjacent to active) -->
+          @if (i > 0 && !tab.active && !tabs[i - 1].active) {
+            <span class="tab-bar__separator">|</span>
           }
-        </div>
+          <div
+            class="tab"
+            [class.tab--active]="tab.active"
+            (click)="tabClicked.emit(tab.entityName)"
+          >
+            <em-icon name="database" [size]="12" />
+            <span class="tab__name">{{ tab.entityName }}</span>
+            <button
+              class="tab__close"
+              (click)="closeTab($event, tab.entityName)"
+              title="Close tab (⌘W)"
+            >
+              <em-icon name="x" [size]="12" />
+            </button>
+          </div>
+        }
       </div>
-    }
+    </div>
   `,
   styles: [`
     .tab-bar {
       display: flex;
       align-items: flex-end;
       background: var(--em-color-bg-secondary);
-      border-bottom: 1px solid var(--em-color-border);
       height: 38px;
       flex-shrink: 0;
       overflow: hidden;
-      padding-left: 12px;
+      padding-left: 16px;
+      border-bottom: 1px solid var(--em-color-border);
     }
     .tab-bar__scroll {
       display: flex;
       align-items: flex-end;
-      gap: 4px;
+      gap: 0;
       overflow-x: auto;
       scrollbar-width: none;
-      padding-top: 6px;
+      height: 100%;
       &::-webkit-scrollbar { display: none; }
     }
+
+    .tab-bar__separator {
+      display: flex;
+      align-items: center;
+      height: calc(100% - 8px);
+      margin-top: 4px;
+      color: var(--em-color-border);
+      font-size: 11px;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    /* Inactive tab — plain text style */
     .tab {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 14px;
-      border-radius: 8px 8px 0 0;
+      padding: 0 12px;
+      height: calc(100% - 8px);
+      margin-top: 4px;
+      border-radius: 999px;
       cursor: pointer;
       white-space: nowrap;
       font-size: 12px;
       font-weight: 500;
       color: var(--em-color-text-muted);
       background: transparent;
+      border: none;
       transition: all 0.12s;
       position: relative;
       min-width: 0;
-      border: 1px solid transparent;
-      border-bottom: none;
-
-      &:hover {
-        color: var(--em-color-text-secondary);
-        background: var(--em-color-bg-hover);
-      }
     }
+
+    /* Hover state (inactive only) — pill highlight */
+    .tab:not(.tab--active):hover {
+      color: var(--em-color-text-primary);
+      background: var(--em-color-bg-hover);
+    }
+
+    /* Active tab — raised shape that merges with content below */
     .tab--active {
       color: var(--em-color-text-primary);
-      background: var(--em-color-bg-primary);
-      border-color: var(--em-color-border);
+      background: var(--em-color-bg-canvas);
+      border-radius: 8px 8px 0 0;
+      border: 1px solid var(--em-color-border);
+      border-bottom: 1px solid var(--em-color-bg-canvas);
       margin-bottom: -1px;
-      padding-bottom: 7px;
-
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 4px;
-        right: 4px;
-        height: 2px;
-        background: var(--em-color-accent);
-        border-radius: 0 0 2px 2px;
-      }
-
-      &:hover {
-        background: var(--em-color-bg-primary);
-      }
+      height: calc(100% - 2px);
+      margin-top: 2px;
+      font-weight: 600;
+      padding: 0 14px;
     }
+
     .tab__name {
       overflow: hidden;
       text-overflow: ellipsis;
@@ -114,10 +131,16 @@ export interface EntityTab {
       transition: all 0.12s;
       flex-shrink: 0;
 
-      .tab:hover &,
+      /* Active tab: always visible at reduced opacity */
       .tab--active & {
+        opacity: 0.5;
+      }
+
+      /* Inactive tab: visible on hover */
+      .tab:hover & {
         opacity: 0.6;
       }
+
       &:hover {
         opacity: 1 !important;
         background: var(--em-color-bg-hover);

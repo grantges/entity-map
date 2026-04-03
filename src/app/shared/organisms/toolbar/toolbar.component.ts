@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SearchDropdownComponent } from '../../molecules/search-dropdown/search-dropdown.component';
 import { DepthSelectorComponent } from '../../molecules/depth-selector/depth-selector.component';
@@ -30,8 +30,10 @@ import { EntityIndex } from '../../../core/models/entity.model';
         <div class="toolbar__separator"></div>
 
         <em-search-dropdown
+          #searchDropdown
           [items]="entityIndex"
           [selectedEntity]="selectedEntity"
+          placeholder="Search entities... (⌘K)"
           (entitySelected)="entitySelected.emit($event)"
         />
       </div>
@@ -49,7 +51,7 @@ import { EntityIndex } from '../../../core/models/entity.model';
             class="toolbar__icon-btn"
             [class.toolbar__icon-btn--active]="showSystemProps"
             (click)="showSystemPropsChange.emit(!showSystemProps)"
-            title="Show system properties"
+            title="Show system properties (⌘.)"
           >
             <em-icon [name]="showSystemProps ? 'eye' : 'eye-off'" [size]="16" />
           </button>
@@ -65,7 +67,7 @@ import { EntityIndex } from '../../../core/models/entity.model';
           <button
             class="toolbar__icon-btn"
             (click)="fitToScreen.emit()"
-            title="Fit to screen"
+            title="Fit to screen (⌘F)"
           >
             <em-icon name="maximize" [size]="16" />
           </button>
@@ -77,7 +79,7 @@ import { EntityIndex } from '../../../core/models/entity.model';
           <button
             class="toolbar__icon-btn"
             (click)="openSidebar.emit()"
-            title="Entity details"
+            title="Entity details (⌘\\)"
           >
             <em-icon name="sidebar" [size]="16" />
           </button>
@@ -85,7 +87,7 @@ import { EntityIndex } from '../../../core/models/entity.model';
           <button
             class="toolbar__icon-btn"
             (click)="openExport.emit()"
-            title="Export"
+            title="Export (⌘E)"
           >
             <em-icon name="download" [size]="16" />
           </button>
@@ -93,7 +95,7 @@ import { EntityIndex } from '../../../core/models/entity.model';
           <div class="toolbar__separator"></div>
         }
 
-        <button class="toolbar__icon-btn" (click)="openSettings.emit()" title="Settings">
+        <button class="toolbar__icon-btn" (click)="openSettings.emit()" title="Settings (⌘,)">
           <em-icon name="settings" [size]="16" />
         </button>
       </div>
@@ -198,4 +200,10 @@ export class ToolbarComponent {
   @Output() openSidebar = new EventEmitter<void>();
   @Output() openExport = new EventEmitter<void>();
   @Output() openSettings = new EventEmitter<void>();
+
+  @ViewChild('searchDropdown') searchDropdown!: SearchDropdownComponent;
+
+  focusSearch(): void {
+    this.searchDropdown?.focus();
+  }
 }

@@ -26,6 +26,8 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { SettingsDialogComponent } from '../../../../shared/organisms/settings-dialog/settings-dialog.component';
 import { ToastContainerComponent } from '../../../../shared/atoms/toast/toast.component';
 import { TabBarComponent, EntityTab } from '../../../../shared/molecules/tab-bar/tab-bar.component';
+import { SearchDropdownComponent } from '../../../../shared/molecules/search-dropdown/search-dropdown.component';
+import { IconComponent } from '../../../../shared/atoms/icon/icon.component';
 
 @Component({
   selector: 'em-diagram-page',
@@ -40,6 +42,8 @@ import { TabBarComponent, EntityTab } from '../../../../shared/molecules/tab-bar
     TabBarComponent,
     DiagramCanvasComponent,
     UploadScreenComponent,
+    SearchDropdownComponent,
+    IconComponent,
   ],
   template: `
     @if (!store.loaded()) {
@@ -48,6 +52,7 @@ import { TabBarComponent, EntityTab } from '../../../../shared/molecules/tab-bar
       <!-- Main App -->
       <div class="app-layout">
         <em-toolbar
+          #toolbar
           [entityIndex]="store.entityIndex()"
           [entityCount]="store.entityCount()"
           [selectedEntity]="selectedEntity()"
@@ -71,16 +76,38 @@ import { TabBarComponent, EntityTab } from '../../../../shared/molecules/tab-bar
         />
 
         <div class="app-layout__content">
-          <em-diagram-canvas
-            #diagramCanvas
-            [nodes]="nodes()"
-            [connections]="connections()"
-            [showSystemProps]="showSystemProps()"
-            [loading]="diagramLoading()"
-            [activeEntityName]="activeEntity()"
-            (entityNavigated)="onEntitySelected($event)"
-            (entityActivated)="onEntityActivated($event)"
-          />
+          @if (!selectedEntity()) {
+            <!-- Empty state -->
+            <div class="empty-state">
+              <div class="empty-state__icon">
+                <em-icon name="database" [size]="48" />
+              </div>
+              <h2 class="empty-state__heading">Select an entity to explore</h2>
+              <p class="empty-state__subtitle">
+                Search for an entity using the search bar above or press
+                <kbd class="empty-state__kbd">&#8984;K</kbd>
+              </p>
+              <div class="empty-state__search">
+                <em-search-dropdown
+                  [items]="store.entityIndex()"
+                  [selectedEntity]="null"
+                  placeholder="Search entities..."
+                  (entitySelected)="onEntitySelected($event)"
+                />
+              </div>
+            </div>
+          } @else {
+            <em-diagram-canvas
+              #diagramCanvas
+              [nodes]="nodes()"
+              [connections]="connections()"
+              [showSystemProps]="showSystemProps()"
+              [loading]="diagramLoading()"
+              [activeEntityName]="activeEntity()"
+              (entityNavigated)="onEntitySelected($event)"
+              (entityActivated)="onEntityActivated($event)"
+            />
+          }
 
           <em-sidebar
             [entity]="activeEntityData()"
@@ -135,6 +162,53 @@ import { TabBarComponent, EntityTab } from '../../../../shared/molecules/tab-bar
         position: relative;
         overflow: hidden;
       }
+
+      /* Empty state */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        gap: var(--em-space-3);
+        background: var(--em-color-bg-canvas);
+      }
+
+      .empty-state__icon {
+        color: var(--em-color-text-muted);
+        opacity: 0.4;
+        margin-bottom: var(--em-space-2);
+      }
+
+      .empty-state__heading {
+        font-size: var(--em-font-size-xl, 20px);
+        font-weight: var(--em-font-weight-bold, 700);
+        color: var(--em-color-text-primary);
+        margin: 0;
+      }
+
+      .empty-state__subtitle {
+        font-size: var(--em-font-size-sm, 13px);
+        color: var(--em-color-text-muted);
+        margin: 0;
+      }
+
+      .empty-state__kbd {
+        display: inline-block;
+        padding: 1px 6px;
+        font-size: 11px;
+        font-family: inherit;
+        background: var(--em-color-bg-secondary);
+        border: 1px solid var(--em-color-border);
+        border-radius: var(--em-radius-sm, 4px);
+        box-shadow: 0 1px 0 var(--em-color-border);
+      }
+
+      .empty-state__search {
+        margin-top: var(--em-space-3);
+        width: 360px;
+        max-width: 90%;
+      }
     `,
   ],
 })
@@ -149,6 +223,7 @@ export class DiagramPageComponent {
   private readonly toast = inject(ToastService);
 
   @ViewChild('diagramCanvas') diagramCanvas?: DiagramCanvasComponent;
+  @ViewChild('toolbar') toolbar?: ToolbarComponent;
 
   // Tab state (persisted per environment)
   private readonly _tabs = signal<string[]>([]);
@@ -230,12 +305,60 @@ export class DiagramPageComponent {
 
   @HostListener('document:keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+    // Only handle shortcuts when the main app is loaded
+    if (!this.store.loaded()) return;
+
+    const mod = event.metaKey || event.ctrlKey;
+
+    if (mod && event.key === 'k') {
       event.preventDefault();
+      this.toolbar?.focusSearch();
+      return;
     }
+
+    if (mod && event.key === 'e') {
+      event.preventDefault();
+      this.exportOpen.update((v) => !v);
+      return;
+    }
+
+    if (mod && event.key === ',') {
+      event.preventDefault();
+      this.settingsOpen.update((v) => !v);
+      return;
+    }
+
+    if (mod && event.key === '\\') {
+      event.preventDefault();
+      this.sidebarOpen.update((v) => !v);
+      return;
+    }
+
+    if (mod && event.key === '.') {
+      event.preventDefault();
+      this.showSystemProps.update((v) => !v);
+      return;
+    }
+
+    if (mod && event.key === 'f') {
+      event.preventDefault();
+      this.diagramCanvas?.fitToScreen();
+      return;
+    }
+
+    if (mod && event.key === 'w') {
+      event.preventDefault();
+      const current = this.selectedEntity();
+      if (current) {
+        this.onTabClosed(current);
+      }
+      return;
+    }
+
     if (event.key === 'Escape') {
       this.sidebarOpen.set(false);
       this.exportOpen.set(false);
+      this.settingsOpen.set(false);
     }
   }
 
