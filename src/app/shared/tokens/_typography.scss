@@ -1,0 +1,23 @@
+:root {
+  --em-font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --em-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --em-font-size-xs: 0.6875rem;   // 11px
+  --em-font-size-sm: 0.8125rem;   // 13px
+  --em-font-size-base: 0.875rem;  // 14px
+  --em-font-size-lg: 1rem;        // 16px
+  --em-font-size-xl: 1.25rem;     // 20px
+  --em-font-size-2xl: 1.5rem;     // 24px
+
+  --em-font-weight-normal: 400;
+  --em-font-weight-medium: 500;
+  --em-font-weight-semibold: 600;
+  --em-font-weight-bold: 700;
+
+  --em-line-height-tight: 1.25;
+  --em-line-height-normal: 1.5;
+
+  --em-letter-spacing-tight: -0.01em;
+  --em-letter-spacing-normal: 0;
+  --em-letter-spacing-wide: 0.025em;
+}

@@ -1,0 +1,67 @@
+@use 'app/shared/tokens/typography';
+@use 'app/shared/tokens/spacing';
+@use 'app/shared/tokens/theme';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--em-font-family);
+  font-size: var(--em-font-size-base);
+  line-height: var(--em-line-height-normal);
+  color: var(--em-color-text-primary);
+  background-color: var(--em-color-bg-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--em-transition-normal),
+    color var(--em-transition-normal);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--em-color-border-strong);
+  border-radius: var(--em-radius-full);
+
+  &:hover {
+    background: var(--em-color-text-muted);
+  }
+}
+
+::selection {
+  background: var(--em-color-accent);
+  color: var(--em-color-text-inverse);
+}
+
+a {
+  color: var(--em-color-text-link);
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}

@@ -1,0 +1,129 @@
+:root,
+[data-theme='light'] {
+  // Surfaces
+  --em-color-bg-primary: #ffffff;
+  --em-color-bg-secondary: #f4f5f7;
+  --em-color-bg-canvas: #f8fafc;
+  --em-color-bg-node: #ffffff;
+  --em-color-bg-node-root: #eef2ff;
+  --em-color-bg-node-header: #f9fafb;
+  --em-color-bg-overlay: rgba(0, 0, 0, 0.4);
+  --em-color-bg-hover: rgba(99, 102, 241, 0.06);
+  --em-color-bg-input: #ffffff;
+
+  // Borders
+  --em-color-border: #e5e7eb;
+  --em-color-border-strong: #d1d5db;
+  --em-color-border-node: #e5e7eb;
+  --em-color-border-node-root: #818cf8;
+  --em-color-border-input: #d1d5db;
+  --em-color-border-focus: #6366f1;
+
+  // Text
+  --em-color-text-primary: #111827;
+  --em-color-text-secondary: #6b7280;
+  --em-color-text-muted: #9ca3af;
+  --em-color-text-inverse: #ffffff;
+  --em-color-text-link: #4f46e5;
+
+  // Accent
+  --em-color-accent: #6366f1;
+  --em-color-accent-hover: #4f46e5;
+  --em-color-accent-subtle: #eef2ff;
+
+  // Type badges
+  --em-color-type-guid: #8b5cf6;
+  --em-color-type-guid-bg: rgba(139, 92, 246, 0.1);
+  --em-color-type-string: #059669;
+  --em-color-type-string-bg: rgba(5, 150, 105, 0.1);
+  --em-color-type-datetime: #d97706;
+  --em-color-type-datetime-bg: rgba(217, 119, 6, 0.1);
+  --em-color-type-int: #2563eb;
+  --em-color-type-int-bg: rgba(37, 99, 235, 0.1);
+  --em-color-type-bool: #dc2626;
+  --em-color-type-bool-bg: rgba(220, 38, 38, 0.1);
+  --em-color-type-decimal: #0891b2;
+  --em-color-type-decimal-bg: rgba(8, 145, 178, 0.1);
+  --em-color-type-stream: #7c3aed;
+  --em-color-type-stream-bg: rgba(124, 58, 237, 0.1);
+  --em-color-type-binary: #7c3aed;
+  --em-color-type-binary-bg: rgba(124, 58, 237, 0.1);
+
+  // Connections
+  --em-color-fk: #6366f1;
+  --em-color-fk-hover: #4f46e5;
+  --em-color-collection: #f59e0b;
+  --em-color-collection-hover: #d97706;
+
+  // Status
+  --em-color-success: #059669;
+  --em-color-warning: #d97706;
+  --em-color-error: #dc2626;
+  --em-color-info: #2563eb;
+  --em-color-custom: #7c3aed;
+
+  // Shadows
+  --em-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --em-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --em-shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --em-shadow-xl: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --em-shadow-node: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --em-shadow-node-hover: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --em-shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.08);
+
+  // Node dimensions
+  --em-node-width: 280px;
+  --em-node-row-height: 28px;
+  --em-node-header-height: 44px;
+  --em-node-border-radius: 8px;
+
+  // Transitions
+  --em-transition-fast: 150ms ease;
+  --em-transition-normal: 250ms ease;
+}
+
+[data-theme='dark'] {
+  --em-color-bg-primary: #0f172a;
+  --em-color-bg-secondary: #1e293b;
+  --em-color-bg-canvas: #020617;
+  --em-color-bg-node: #1e293b;
+  --em-color-bg-node-root: #1e1b4b;
+  --em-color-bg-node-header: #1a2332;
+  --em-color-bg-overlay: rgba(0, 0, 0, 0.6);
+  --em-color-bg-hover: rgba(99, 102, 241, 0.12);
+  --em-color-bg-input: #1e293b;
+
+  --em-color-border: #334155;
+  --em-color-border-strong: #475569;
+  --em-color-border-node: #334155;
+  --em-color-border-node-root: #6366f1;
+  --em-color-border-input: #475569;
+  --em-color-border-focus: #818cf8;
+
+  --em-color-text-primary: #f1f5f9;
+  --em-color-text-secondary: #94a3b8;
+  --em-color-text-muted: #64748b;
+  --em-color-text-inverse: #0f172a;
+  --em-color-text-link: #818cf8;
+
+  --em-color-accent: #818cf8;
+  --em-color-accent-hover: #6366f1;
+  --em-color-accent-subtle: #1e1b4b;
+
+  --em-color-type-guid-bg: rgba(139, 92, 246, 0.2);
+  --em-color-type-string-bg: rgba(5, 150, 105, 0.2);
+  --em-color-type-datetime-bg: rgba(217, 119, 6, 0.2);
+  --em-color-type-int-bg: rgba(37, 99, 235, 0.2);
+  --em-color-type-bool-bg: rgba(220, 38, 38, 0.2);
+  --em-color-type-decimal-bg: rgba(8, 145, 178, 0.2);
+  --em-color-type-stream-bg: rgba(124, 58, 237, 0.2);
+  --em-color-type-binary-bg: rgba(124, 58, 237, 0.2);
+
+  --em-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --em-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --em-shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --em-shadow-xl: 0 10px 15px rgba(0, 0, 0, 0.4), 0 4px 6px rgba(0, 0, 0, 0.3);
+  --em-shadow-node: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --em-shadow-node-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --em-shadow-dropdown: 0 10px 25px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.4);
+}
