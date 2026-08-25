@@ -128,6 +128,16 @@ interface PendingPull {
                 </button>
               </div>
               @if (pullError()) { <div class="pull-dialog__error">{{ pullError() }}</div> }
+              @if (odataService.tlsError()) {
+                <label class="tls-trust">
+                  <input type="checkbox" [(ngModel)]="trustCertificate" />
+                  <span>
+                    <strong>Trust this certificate for this environment</strong>
+                    Only do this for a server you control \u2014 an unverified
+                    certificate means this connection can be intercepted.
+                  </span>
+                </label>
+              }
             </div>
           </div>
         }
@@ -414,6 +424,21 @@ interface PendingPull {
       .pull-dialog__error {
         font-size: var(--em-font-size-xs); color: var(--em-color-error);
       }
+      /* Certificate-trust opt-in. Styled as a warning, not a neutral setting. */
+      .tls-trust {
+        display: flex; gap: var(--em-space-2); align-items: flex-start;
+        padding: var(--em-space-3);
+        background: rgba(220, 38, 38, 0.08);
+        border: 1px solid rgba(220, 38, 38, 0.25);
+        border-radius: var(--em-radius-md);
+        font-size: var(--em-font-size-xs);
+        color: var(--em-color-text-secondary);
+        line-height: 1.5;
+        cursor: pointer;
+
+        input { margin-top: 2px; flex-shrink: 0; }
+        strong { display: block; color: var(--em-color-text-primary); margin-bottom: 2px; }
+      }
 
     `,
   ],
@@ -427,7 +452,7 @@ export class DiagramPageComponent {
   private readonly docExport = inject(DocExportService);
   private readonly envService = inject(EnvironmentStorageService);
   private readonly toast = inject(ToastService);
-  private readonly odataService = inject(ODataConnectionService);
+  readonly odataService = inject(ODataConnectionService);
   private readonly parserService = inject(MetadataParserService);
 
   @ViewChild('diagramCanvas') diagramCanvas?: DiagramCanvasComponent;
@@ -548,6 +573,8 @@ export class DiagramPageComponent {
   readonly pullPasswordFor = signal<Environment | null>(null);
   readonly pendingPull = signal<PendingPull | null>(null);
   pullPassword = '';
+  /** Opt-in to an unverified certificate; only surfaced after a TLS failure. */
+  trustCertificate = false;
 
   readonly currentEnvironment = computed(() =>
     this.envService.environments().find((e) => e.id === this.store.environmentId())
@@ -716,7 +743,11 @@ export class DiagramPageComponent {
     this.pullError.set(null);
     try {
       const conn = env.connection!;
-      const xml = await this.odataService.connect(conn.url, conn.username, password);
+      const trusted = conn.allowInsecureTls === true || this.trustCertificate;
+      const xml = await this.odataService.connect(conn.url, conn.username, password, trusted);
+      if (this.trustCertificate && !conn.allowInsecureTls) {
+        this.envService.setConnection(env.id, { ...conn, allowInsecureTls: true });
+      }
       const result = await new Promise<ParseResult>((resolve, reject) => {
         this.parserService.parseXml(xml).subscribe({
           next: resolve,

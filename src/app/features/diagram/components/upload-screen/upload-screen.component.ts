@@ -102,6 +102,15 @@ import { BadgeComponent } from '../../../../shared/atoms/badge/badge.component';
               @if (odataService.error()) {
                 <div class="upload-card__error">{{ odataService.error() }}</div>
               }
+              @if (odataService.tlsError()) {
+                <label class="tls-trust">
+                  <input type="checkbox" [(ngModel)]="trustCertificate" />
+                  <span>
+                    <strong>Trust this certificate for this environment</strong>
+                    Only do this for a server you control.
+                  </span>
+                </label>
+              }
             </div>
           }
 
@@ -173,6 +182,18 @@ import { BadgeComponent } from '../../../../shared/atoms/badge/badge.component';
 
             @if (odataService.error()) {
               <div class="upload-card__error">{{ odataService.error() }}</div>
+            }
+
+            @if (odataService.tlsError()) {
+              <label class="tls-trust">
+                <input type="checkbox" [(ngModel)]="trustCertificate" />
+                <span>
+                  <strong>Trust this certificate for this environment</strong>
+                  Only do this for a server you control. An unverified certificate
+                  means the connection can be intercepted and your Creatio
+                  credentials read in transit.
+                </span>
+              </label>
             }
           </div>
         }
@@ -578,6 +599,22 @@ import { BadgeComponent } from '../../../../shared/atoms/badge/badge.component';
         &:hover { background: var(--em-color-bg-hover); }
       }
 
+      /* Certificate-trust opt-in. Styled as a warning, not a neutral setting. */
+      .tls-trust {
+        display: flex; gap: var(--em-space-2); align-items: flex-start;
+        padding: var(--em-space-3);
+        background: rgba(220, 38, 38, 0.08);
+        border: 1px solid rgba(220, 38, 38, 0.25);
+        border-radius: var(--em-radius-md);
+        font-size: var(--em-font-size-xs);
+        color: var(--em-color-text-secondary);
+        line-height: 1.5;
+        cursor: pointer;
+
+        input { margin-top: 2px; flex-shrink: 0; }
+        strong { display: block; color: var(--em-color-text-primary); margin-bottom: 2px; }
+      }
+
       .upload-screen__theme-btn {
         position: absolute;
         top: var(--em-space-4);
@@ -631,6 +668,8 @@ export class UploadScreenComponent {
   readonly canStorePassword = signal(false);
   pullPassword = '';
   rememberPassword = true;
+  /** Opt-in to an unverified certificate; only surfaced after a TLS failure. */
+  trustCertificate = false;
 
   // Live connection form
   connectUrl = '';
@@ -748,8 +787,12 @@ export class UploadScreenComponent {
     const conn = env.connection;
     if (!conn) return;
     try {
-      const xml = await this.odataService.connect(conn.url, conn.username, password);
+      const trusted = conn.allowInsecureTls === true || this.trustCertificate;
+      const xml = await this.odataService.connect(conn.url, conn.username, password, trusted);
       const result = await this.parseXmlOnce(xml);
+      if (this.trustCertificate && !conn.allowInsecureTls) {
+        this.envService.setConnection(env.id, { ...conn, allowInsecureTls: true });
+      }
       await this.envService.setSchema(env.id, result, true);
       if (remember && this.canStorePassword()) {
         await this.envService.savePassword(env.id, password);
@@ -777,7 +820,7 @@ export class UploadScreenComponent {
   async liveConnect(): Promise<void> {
     try {
       const xml = await this.odataService.connect(
-        this.connectUrl, this.connectUsername, this.connectPassword
+        this.connectUrl, this.connectUsername, this.connectPassword, this.trustCertificate
       );
       const result = await this.parseXmlOnce(xml);
       const host = new URL(this.connectUrl).hostname;
@@ -785,7 +828,11 @@ export class UploadScreenComponent {
       // A connection is not a separate record -- it creates an environment.
       const env = await this.envService.createFromConnection(
         host,
-        { url: this.connectUrl.replace(/\/+$/, ''), username: this.connectUsername },
+        {
+          url: this.connectUrl.replace(/\/+$/, ''),
+          username: this.connectUsername,
+          ...(this.trustCertificate ? { allowInsecureTls: true } : {}),
+        },
         result
       );
       if (this.connectSave && this.canStorePassword()) {

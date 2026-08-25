@@ -59,7 +59,7 @@ const MIME = {
  * @param {{ root: string, allowInsecureTls?: boolean, log?: (m: string) => void }} opts
  * @returns {Promise<{ port: number, origin: string, close: () => Promise<void> }>}
  */
-function startServer({ root, port = APP_PORT, allowInsecureTls = true, log = () => {} }) {
+function startServer({ root, port = APP_PORT, allowInsecureTls = false, log = () => {} }) {
   const indexPath = path.join(root, 'index.html');
   if (!fs.existsSync(indexPath)) {
     return Promise.reject(

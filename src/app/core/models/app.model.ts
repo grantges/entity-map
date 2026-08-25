@@ -15,6 +15,14 @@ export interface EnvironmentConnection {
   hasStoredPassword?: boolean;
   /** ISO timestamp of the last successful schema pull. */
   lastPulledAt?: string;
+  /**
+   * Accept this host's certificate even though it fails verification.
+   *
+   * Opt-in per environment and never a default: it disables MITM protection
+   * for this host. Offered only after a certificate failure actually occurs,
+   * so it cannot be switched on casually.
+   */
+  allowInsecureTls?: boolean;
 }
 
 /**

@@ -162,6 +162,14 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
                           Forget saved password
                         </button>
                       }
+                      @if (env.connection?.allowInsecureTls) {
+                        <span class="tls-flag">
+                          Certificate verification disabled for this host
+                          <button class="link-btn" (click)="revokeTlsTrust(env.id)">
+                            Re-enable
+                          </button>
+                        </span>
+                      }
                     </div>
                     <button class="conn-card__delete" (click)="deleteEnv(env.id)"
                       [title]="'Delete ' + env.name">
@@ -353,6 +361,10 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
     .conn-card__info { display: flex; flex-direction: column; gap: 2px; }
     .conn-card__name { font-weight: 500; font-size: 13px; color: var(--em-color-text-primary); }
     .conn-card__meta { font-size: 11px; color: var(--em-color-text-muted); }
+    .tls-flag {
+      display: block; margin-top: 4px; font-size: 11px;
+      color: var(--em-color-error);
+    }
     .link-btn {
       align-self: flex-start; margin-top: 4px; padding: 0;
       background: none; border: none; color: var(--em-color-accent);
@@ -397,6 +409,14 @@ export class SettingsDialogComponent {
 
   async forgetPassword(id: string): Promise<void> {
     await this.envService.deletePassword(id);
+  }
+
+  /** Restore certificate verification for a host that was trusted earlier. */
+  revokeTlsTrust(id: string): void {
+    const env = this.envService.byId(id);
+    if (!env?.connection) return;
+    const { allowInsecureTls, ...rest } = env.connection;
+    this.envService.setConnection(id, rest);
   }
   readonly baselineMessage = signal('');
   baselineName = '';

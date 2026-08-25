@@ -17,6 +17,27 @@ const { URL } = require('url');
 
 const PROXY_PREFIX = '/creatio-proxy';
 
+/**
+ * Per-request opt-out of TLS verification.
+ *
+ * Set ONLY by odata-connection.service, and only for an environment the user
+ * has explicitly marked as trusting a self-signed certificate. The proxy binds
+ * to 127.0.0.1, so the header is reachable only by local processes -- which
+ * could make their own unverified request anyway, so it grants no new power.
+ */
+const INSECURE_TLS_HEADER = 'x-em-allow-insecure-tls';
+
+/** Node TLS failures that a self-signed certificate typically produces. */
+const TLS_ERROR_CODES = new Set([
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'CERT_HAS_EXPIRED',
+  'CERT_NOT_YET_VALID',
+  'ERR_TLS_INVALID_PROTOCOL_VERSION',
+]);
+
 /** Stored cookies per target host (simple in-memory cookie jar) */
 const cookieJar = new Map();
 
@@ -42,13 +63,13 @@ function isProxyRequest(req) {
  * @param {import('http').ServerResponse} res
  * @param {{ allowInsecureTls?: boolean, log?: (msg: string) => void }} [options]
  *
- * `allowInsecureTls` accepts self-signed certificates on the TARGET Creatio
- * host. Many on-prem/dev Creatio instances use them, so it defaults to true to
- * match existing behaviour -- but it disables MITM protection and should become
- * a per-connection opt-in toggle before this ships to users.
+ * TLS verification is ON by default and is disabled only for a single request
+ * carrying the opt-in header. Disabling it defeats MITM protection, so it is
+ * never a server-wide default: an on-prem Creatio with a self-signed
+ * certificate has to be trusted explicitly, per environment, by the user.
  */
 async function handleProxyRequest(req, res, options = {}) {
-  const { allowInsecureTls = true, log = () => {} } = options;
+  const { allowInsecureTls = false, log = () => {} } = options;
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -114,11 +135,17 @@ async function handleProxyRequest(req, res, options = {}) {
   }
 
   const transport = targetUrl.protocol === 'https:' ? https : http;
+  const insecure = allowInsecureTls || req.headers[INSECURE_TLS_HEADER] === '1';
+  if (insecure) {
+    log(`[proxy] TLS verification DISABLED for ${targetUrl.host} (user opt-in)`);
+  }
+  // Never forward the control header to the upstream server.
+  delete fwdHeaders[INSECURE_TLS_HEADER];
 
   const proxyReq = transport.request(targetUrl.href, {
     method: req.method,
     headers: fwdHeaders,
-    rejectUnauthorized: !allowInsecureTls,
+    rejectUnauthorized: !insecure,
   }, (proxyRes) => {
     // Store set-cookie from response
     const setCookies = proxyRes.headers['set-cookie'];
@@ -148,8 +175,11 @@ async function handleProxyRequest(req, res, options = {}) {
 
   proxyReq.on('error', (err) => {
     log(`[proxy] error: ${err.message}`);
+    // Flag certificate failures distinctly so the UI can offer to trust this
+    // host rather than showing a generic, unactionable connection error.
+    const tlsError = TLS_ERROR_CODES.has(err.code);
     res.writeHead(502, { ...corsHeaders(req), 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: err.message }));
+    res.end(JSON.stringify({ error: err.message, code: err.code, tlsError }));
   });
 
   if (body.length > 0) proxyReq.write(body);
@@ -161,4 +191,7 @@ function clearCookies() {
   cookieJar.clear();
 }
 
-module.exports = { PROXY_PREFIX, isProxyRequest, handleProxyRequest, corsHeaders, clearCookies };
+module.exports = {
+  PROXY_PREFIX, INSECURE_TLS_HEADER, isProxyRequest,
+  handleProxyRequest, corsHeaders, clearCookies,
+};
