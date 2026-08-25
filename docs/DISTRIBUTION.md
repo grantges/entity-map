@@ -121,9 +121,16 @@ against a built `.app`.
 
 ---
 
+## Versioning
+
+Artifact names come from `version` in `package.json` (currently `1.0.0`), so
+`Entity Map-1.0.0-arm64.dmg`. Bump it before cutting a release; auto-update, once set up,
+compares against it.
+
+---
+
 ## Not yet set up
 
 - **Auto-update.** `electron-updater` against GitHub Releases is the usual route and is
   free, but requires signed builds to be useful.
-- **Versioning.** `package.json` is still `0.0.0`; artifacts are named from it.
 - **CI.** Builds are local only. macOS artifacts must be built and notarised on macOS.
