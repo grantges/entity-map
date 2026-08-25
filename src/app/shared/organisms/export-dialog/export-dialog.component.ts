@@ -6,6 +6,8 @@ import { AiService } from '../../../core/services/ai.service';
 import { BaselineService } from '../../../core/services/baseline.service';
 import { formatDate as sharedFormatDate } from '../../../core/utils/format';
 
+export type ExportScope = 'active-tab' | 'all-tabs';
+
 @Component({
   selector: 'em-export-dialog',
   standalone: true,
@@ -30,12 +32,30 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
               (click)="activeTab.set('schema')">
               <em-icon name="database" [size]="14" /> Creatio Schema
             </button>
-            <!-- Baseline and AI settings moved to Settings dialog -->
           </div>
 
           <div class="dialog__body">
             <!-- ===== DOCUMENTATION TAB ===== -->
             @if (activeTab() === 'docs') {
+              <!-- Export scope selector -->
+              <div class="dialog__section">
+                <label class="dialog__label">Export scope:</label>
+                <div class="dialog__radio-group dialog__radio-group--scope">
+                  <label class="dialog__radio-label">
+                    <input type="radio" name="docScope" value="active-tab"
+                      [(ngModel)]="exportScope" />
+                    Active tab only
+                    <span class="dialog__radio-hint">{{ activeTabEntityName }} + related</span>
+                  </label>
+                  <label class="dialog__radio-label">
+                    <input type="radio" name="docScope" value="all-tabs"
+                      [(ngModel)]="exportScope" />
+                    All open tabs
+                    <span class="dialog__radio-hint">{{ allTabEntityNames.length }} entities across {{ allTabEntityNames.length }} tabs</span>
+                  </label>
+                </div>
+              </div>
+
               <div class="dialog__section">
                 <p class="dialog__hint">
                   Exports a Word document (.docx) with property tables, type annotations,
@@ -89,9 +109,9 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
               }
 
               <div class="dialog__section">
-                <label class="dialog__label">Entities to include ({{ entityNames.length }})</label>
+                <label class="dialog__label">Entities to include ({{ resolvedEntityNames.length }})</label>
                 <div class="dialog__entity-list">
-                  @for (name of entityNames; track name) {
+                  @for (name of resolvedEntityNames; track name) {
                     <span class="dialog__entity-tag">{{ name }}</span>
                   }
                 </div>
@@ -100,6 +120,25 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
 
             <!-- ===== SCHEMA TAB ===== -->
             @if (activeTab() === 'schema') {
+              <!-- Export scope selector -->
+              <div class="dialog__section">
+                <label class="dialog__label">Export scope:</label>
+                <div class="dialog__radio-group dialog__radio-group--scope">
+                  <label class="dialog__radio-label">
+                    <input type="radio" name="schemaScope" value="active-tab"
+                      [(ngModel)]="exportScope" />
+                    Active tab only
+                    <span class="dialog__radio-hint">{{ activeTabEntityName }} + related</span>
+                  </label>
+                  <label class="dialog__radio-label">
+                    <input type="radio" name="schemaScope" value="all-tabs"
+                      [(ngModel)]="exportScope" />
+                    All open tabs
+                    <span class="dialog__radio-hint">{{ allTabEntityNames.length }} entities across {{ allTabEntityNames.length }} tabs</span>
+                  </label>
+                </div>
+              </div>
+
               <div class="dialog__section">
                 <label class="dialog__label">Package Name</label>
                 <input class="dialog__input" [(ngModel)]="packageName" placeholder="CustomPackage" />
@@ -111,16 +150,14 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
                 </label>
               </div>
               <div class="dialog__section">
-                <label class="dialog__label">Entities</label>
+                <label class="dialog__label">Entities ({{ resolvedEntityNames.length }})</label>
                 <div class="dialog__entity-list">
-                  @for (name of entityNames; track name) {
+                  @for (name of resolvedEntityNames; track name) {
                     <span class="dialog__entity-tag">{{ name }}</span>
                   }
                 </div>
               </div>
             }
-
-            <!-- Baseline and AI settings are in the Settings dialog -->
           </div>
 
           <div class="dialog__footer">
@@ -205,6 +242,10 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
       display: flex; flex-direction: column; gap: 8px;
       margin-top: 10px; padding-left: 24px;
     }
+    .dialog__radio-group--scope {
+      padding-left: 0;
+      margin-top: 4px;
+    }
     .dialog__radio-label {
       display: flex; align-items: flex-start; gap: 8px;
       font-size: 13px; color: var(--em-color-text-secondary);
@@ -277,13 +318,16 @@ export class ExportDialogComponent {
 
   @Input() isOpen = false;
   @Input() entityNames: string[] = [];
+  @Input() activeTabEntityName = '';
+  @Input() allTabEntityNames: string[] = [];
   @Output() closed = new EventEmitter<void>();
-  @Output() exportSchema = new EventEmitter<{ packageName: string; customOnly: boolean }>();
+  @Output() exportSchema = new EventEmitter<{ packageName: string; customOnly: boolean; entityNames: string[] }>();
   @Output() exportDocs = new EventEmitter<{
     aiEnhanced: boolean;
     aiDescriptionMode: 'fill-missing' | 'override-all';
     deltaOnly: boolean;
     baselineId: string | null;
+    entityNames: string[];
   }>();
 
   readonly activeTab = signal<'schema' | 'docs'>('docs');
@@ -294,10 +338,17 @@ export class ExportDialogComponent {
   aiDescriptionMode: 'fill-missing' | 'override-all' = 'fill-missing';
   deltaOnly = false;
   selectedBaselineId = '';
+  exportScope: ExportScope = 'active-tab';
+
+  get resolvedEntityNames(): string[] {
+    if (this.exportScope === 'all-tabs') {
+      return this.allTabEntityNames;
+    }
+    return this.entityNames;
+  }
 
   onDeltaToggle(enabled: boolean): void {
     if (enabled) {
-      // Auto-select the first baseline so the select isn't empty
       const baselines = this.baselineService.baselinesForCurrentEnv();
       if (baselines.length > 0) {
         this.selectedBaselineId = baselines[0].id;
@@ -310,14 +361,16 @@ export class ExportDialogComponent {
   }
 
   onExport(): void {
+    const names = this.resolvedEntityNames;
     if (this.activeTab() === 'schema') {
-      this.exportSchema.emit({ packageName: this.packageName, customOnly: this.customOnly });
+      this.exportSchema.emit({ packageName: this.packageName, customOnly: this.customOnly, entityNames: names });
     } else if (this.activeTab() === 'docs') {
       this.exportDocs.emit({
         aiEnhanced: this.aiEnhancedDocs,
         aiDescriptionMode: this.aiDescriptionMode,
         deltaOnly: this.deltaOnly,
         baselineId: this.deltaOnly ? this.selectedBaselineId : null,
+        entityNames: names,
       });
     }
     this.closed.emit();

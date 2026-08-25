@@ -5,6 +5,9 @@ import { IconComponent } from '../../atoms/icon/icon.component';
 export interface EntityTab {
   entityName: string;
   active: boolean;
+  depth: number;
+  showSystemProps: boolean;
+  layoutDirection: 'LR' | 'TB';
 }
 
 @Component({
@@ -45,15 +48,17 @@ export interface EntityTab {
       background: var(--em-color-bg-secondary);
       height: 38px;
       flex-shrink: 0;
-      overflow: hidden;
+      overflow: visible;
       padding-left: 16px;
       border-bottom: 1px solid var(--em-color-border);
+      position: relative;
+      z-index: 2;
     }
     .tab-bar__scroll {
       display: flex;
       align-items: flex-end;
       gap: 0;
-      overflow-x: auto;
+      overflow: visible;
       scrollbar-width: none;
       height: 100%;
       &::-webkit-scrollbar { display: none; }
@@ -103,12 +108,24 @@ export interface EntityTab {
       background: var(--em-color-bg-canvas);
       border-radius: 8px 8px 0 0;
       border: 1px solid var(--em-color-border);
-      border-bottom: 1px solid var(--em-color-bg-canvas);
-      margin-bottom: -1px;
+      border-bottom: none;
       height: calc(100% - 2px);
       margin-top: 2px;
       font-weight: 600;
       padding: 0 14px;
+      position: relative;
+      z-index: 3;
+
+      /* Paint over the tab-bar border-bottom */
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--em-color-bg-canvas);
+      }
     }
 
     .tab__name {
