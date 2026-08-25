@@ -123,9 +123,19 @@ against a built `.app`.
 
 ## Versioning
 
-Artifact names come from `version` in `package.json` (currently `1.0.0`), so
-`Entity Map-1.0.0-arm64.dmg`. Bump it before cutting a release; auto-update, once set up,
-compares against it.
+Artifact names are derived from `version` in `package.json` — that field is the single
+source of truth, so this document deliberately does not repeat the number.
+
+```bash
+node -p "require('./package.json').version"
+```
+
+Bump it before cutting a release; auto-update, once configured, compares against it.
+
+**Artifacts in `release/` are not cleaned between builds.** A bump leaves the previous
+version's files sitting alongside the new ones, so check the version in the filename
+before shipping anything — and delete stale builds that predate a security fix rather
+than leaving them where they can be picked up by mistake.
 
 ---
 
