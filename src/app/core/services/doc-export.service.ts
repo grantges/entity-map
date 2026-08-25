@@ -31,7 +31,7 @@ import {
   VerticalAlign,
   TableOfContents,
 } from 'docx';
-import { saveAs } from 'file-saver';
+import { FILE_SAVER } from '../platform/platform.model';
 
 // ── Design tokens ──
 const C = {
@@ -66,6 +66,7 @@ const noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBo
 @Injectable({ providedIn: 'root' })
 export class DocExportService {
   private readonly store = inject(MetadataStoreService);
+  private readonly fileSaver = inject(FILE_SAVER);
   private readonly ai = inject(AiService);
 
   async exportToWord(
@@ -312,7 +313,7 @@ export class DocExportService {
     });
 
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, 'entity-documentation.docx');
+    await this.fileSaver.save(blob, 'entity-documentation.docx');
   }
 
   // ── Cover page ──

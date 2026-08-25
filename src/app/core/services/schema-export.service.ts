@@ -2,11 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { MetadataStoreService } from './metadata-store.service';
 import { SchemaExportOptions } from '../models/schema-export.model';
 import { ODataEntityType, ODataProperty } from '../models/entity.model';
-import { downloadBlob } from '../utils/file-download';
+import { FILE_SAVER } from '../platform/platform.model';
 
 @Injectable({ providedIn: 'root' })
 export class SchemaExportService {
   private readonly store = inject(MetadataStoreService);
+  private readonly fileSaver = inject(FILE_SAVER);
 
   exportCreatioSchema(options: SchemaExportOptions): string {
     const entities = options.entities
@@ -78,8 +79,8 @@ ${schemas.join('\n')}
     return map[edmType] || 'MediumText';
   }
 
-  downloadSchema(xml: string, filename: string): void {
+  async downloadSchema(xml: string, filename: string): Promise<void> {
     const blob = new Blob([xml], { type: 'application/xml' });
-    downloadBlob(blob, filename);
+    await this.fileSaver.save(blob, filename);
   }
 }

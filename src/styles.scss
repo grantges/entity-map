@@ -65,3 +65,95 @@ textarea {
   font-family: inherit;
   font-size: inherit;
 }
+
+/* ── Electron host chrome ───────────────────────────────────────────────
+ *
+ * Applied by providePlatform() at bootstrap. Web builds never get these
+ * classes, so the browser layout is untouched.
+ *
+ * On macOS the window is created with titleBarStyle: 'hiddenInset', so the
+ * traffic-light buttons are drawn INSIDE the page over the top-left of the
+ * toolbar. Two consequences to handle:
+ *   1. Reserve horizontal space so the brand isn't sat underneath them.
+ *   2. A hidden title bar leaves the window with NO draggable region, so the
+ *      toolbar has to opt in explicitly -- and every interactive child has to
+ *      opt back out, or it becomes unclickable.
+ */
+
+.em-platform-mac-frameless {
+  /* Traffic lights span roughly x:20-76. The extra gap past that is
+   * deliberate -- butting content right up against them reads as cramped. */
+  --em-traffic-light-inset: 104px;
+}
+
+/* In full screen macOS hides the traffic lights entirely, so the reserved
+ * space becomes a dead gap. Collapsing the single variable is enough -- every
+ * rule that reserves space reads from it. */
+.em-platform-mac-frameless.em-window-fullscreen {
+  --em-traffic-light-inset: var(--em-space-4);
+}
+
+/* `html.` prefix is REQUIRED, not decoration.
+ *
+ * Angular scopes component styles as `.toolbar[_ngcontent-xxx]` (specificity
+ * 0-2-0). A plain `.em-platform-mac-frameless .toolbar` is also 0-2-0, so the
+ * tie breaks on source order and the component's `padding: 0 var(--em-space-4)`
+ * wins -- the traffic lights then sit on top of the brand. The element selector
+ * pushes this to 0-2-1 so the inset reliably applies. */
+html.em-platform-mac-frameless .toolbar {
+  padding-left: var(--em-traffic-light-inset);
+  -webkit-app-region: drag;
+}
+
+/* Anything the user can interact with must escape the drag region. */
+html.em-platform-mac-frameless .toolbar button,
+.em-platform-mac-frameless .toolbar input,
+.em-platform-mac-frameless .toolbar a,
+.em-platform-mac-frameless .toolbar em-search-dropdown,
+.em-platform-mac-frameless .toolbar em-badge {
+  -webkit-app-region: no-drag;
+}
+
+/* The tab bar sits below the toolbar and is a natural drag handle too, but its
+ * tabs and close buttons must stay clickable. */
+.em-platform-mac-frameless .tab-bar {
+  -webkit-app-region: drag;
+}
+
+.em-platform-mac-frameless .tab-bar .tab,
+.em-platform-mac-frameless .tab-bar button {
+  -webkit-app-region: no-drag;
+}
+
+/* Window-drag strip for screens that have no toolbar of their own.
+ *
+ * Rendered INSIDE the upload screen, not as a global fixed overlay. An overlay
+ * pinned to the viewport covers the toolbar on every other screen and makes it
+ * unclickable: `.toolbar` sets `z-index: 10` but never sets `position`, so that
+ * z-index is inert and a positioned overlay always paints above it.
+ *
+ * The theme button follows this element in the DOM and is also positioned, so
+ * it paints on top and stays clickable without needing its own opt-out. */
+html.em-platform-mac-frameless .upload-screen__drag-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  -webkit-app-region: drag;
+}
+
+/* The window already identifies the app (menu bar, dock, About panel), so the
+ * in-page wordmark and its icon are redundant chrome on the desktop build.
+ * The web build has no such affordance and keeps both. The entity-count badge
+ * stays either way -- that is data, not branding. */
+html.em-platform-electron .toolbar__title,
+html.em-platform-electron .toolbar__brand em-icon {
+  display: none;
+}
+
+/* With the icon and wordmark gone the brand collapses to just the badge; drop
+ * the now-dangling gap so it aligns with the search field. */
+html.em-platform-electron .toolbar__brand {
+  gap: 0;
+}

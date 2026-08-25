@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { ODataEntityType, ODataProperty, EntityMetadata, getEdmTypeShort } from '../models/entity.model';
 import { AiDescriptionResult } from '../models/app.model';
-import { CryptoStorageService } from './crypto-storage.service';
+import { SECRET_STORE } from '../platform/platform.model';
 
 export type { AiDescriptionResult } from '../models/app.model';
 
@@ -10,7 +10,7 @@ const LS_KEY_OPENAI_MODEL = 'em-openai-model';
 
 @Injectable({ providedIn: 'root' })
 export class AiService {
-  private readonly cryptoStorage = inject(CryptoStorageService);
+  private readonly secrets = inject(SECRET_STORE);
   private _apiKey = signal<string>('');
   private _model = signal<string>(localStorage.getItem(LS_KEY_OPENAI_MODEL) || 'gpt-4o-mini');
   private _generating = signal<boolean>(false);
@@ -30,18 +30,14 @@ export class AiService {
   }
 
   private async loadKey(): Promise<void> {
-    const stored = localStorage.getItem(LS_KEY_OPENAI_KEY);
-    if (stored) {
-      const key = await this.cryptoStorage.decrypt(stored);
-      this._apiKey.set(key);
-    }
+    const key = await this.secrets.get(LS_KEY_OPENAI_KEY);
+    if (key) this._apiKey.set(key);
     this._ready = true;
   }
 
   async setApiKey(key: string): Promise<void> {
     this._apiKey.set(key);
-    const encrypted = await this.cryptoStorage.encrypt(key);
-    localStorage.setItem(LS_KEY_OPENAI_KEY, encrypted);
+    await this.secrets.set(LS_KEY_OPENAI_KEY, key);
   }
 
   setModel(model: string): void {
@@ -176,6 +172,93 @@ Explain what this entity represents in a CRM context and its key purpose.
 Output ONLY the introduction text, no markdown.`;
 
     return await this.callOpenAI(prompt);
+  }
+
+  /**
+   * Generate NEW properties for an entity based on its description.
+   * Returns an array of suggested property definitions.
+   */
+  async generateProperties(
+    entityName: string,
+    description: string,
+    baseType?: string,
+  ): Promise<{ name: string; type: string; creatioType: string; description: string; linkedEntity?: string }[]> {
+    if (!this.isConfigured()) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    this._generating.set(true);
+    this._progress.set(`Generating properties for ${entityName}...`);
+
+    try {
+      const prompt = `You are a Creatio CRM data architect designing a new entity.
+
+Entity name: ${entityName}
+Description: ${description}
+${baseType ? 'Inherits from: ' + baseType + ' (which already provides base fields like Id, CreatedOn, etc.)' : ''}
+
+Generate the columns/properties this entity should have. Do NOT include system columns (Id, CreatedOn, CreatedById, ModifiedOn, ModifiedById, ProcessListeners) — those are inherited automatically.
+
+Use Creatio data types:
+- "Text (50)", "Text (250)", "Text (500)", "Text (unlimited)" → Edm.String
+- "Integer" → Edm.Int32
+- "Float", "Money" → Edm.Decimal
+- "Date/Time", "Date", "Time" → Edm.DateTimeOffset
+- "Boolean" → Edm.Boolean
+- "Lookup" → Edm.Guid (requires a linkedEntity name — the target entity to reference)
+- "Unique identifier" → Edm.Guid
+- "Image" → Edm.Stream
+
+Respond in this exact JSON format (no markdown, no code fences):
+{
+  "properties": [
+    {
+      "name": "PropertyName",
+      "creatioType": "Text (250)",
+      "edmType": "Edm.String",
+      "description": "Brief description",
+      "linkedEntity": null
+    }
+  ]
+}
+
+Rules:
+- Use PascalCase for property names
+- For Lookup types, set linkedEntity to the name of the referenced entity (e.g., "Contact", "Account")
+- Include 5-12 properties that make sense for a "${entityName}" in a CRM context
+- Keep descriptions concise (one sentence)
+- Make the properties practical and domain-appropriate`;
+
+      const response = await this.callOpenAI(prompt);
+      return this.parsePropertiesResponse(response);
+    } finally {
+      this._generating.set(false);
+      this._progress.set('');
+    }
+  }
+
+  private parsePropertiesResponse(
+    response: string,
+  ): { name: string; type: string; creatioType: string; description: string; linkedEntity?: string }[] {
+    try {
+      let json = response;
+      const fenceMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenceMatch) json = fenceMatch[1];
+      json = json.trim();
+
+      const parsed = JSON.parse(json);
+      if (!parsed.properties || !Array.isArray(parsed.properties)) return [];
+
+      return parsed.properties.map((p: Record<string, unknown>) => ({
+        name: String(p['name'] || ''),
+        type: String(p['edmType'] || 'Edm.String'),
+        creatioType: String(p['creatioType'] || 'Text (250)'),
+        description: String(p['description'] || ''),
+        linkedEntity: p['linkedEntity'] ? String(p['linkedEntity']) : undefined,
+      })).filter((p: { name: string }) => p.name.length > 0);
+    } catch {
+      return [];
+    }
   }
 
   // === Private helpers ===

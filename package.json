@@ -8,11 +8,16 @@
     "proxy": "node proxy-server.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "electron:dev": "concurrently --names proxy,ng,electron --prefix-colors blue,green,magenta \"node proxy-server.js\" \"ng serve\" \"wait-on tcp:4200 && cross-env EM_DEV=1 node electron/launch.js\"",
+    "electron:start": "npm run build && node electron/launch.js",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win"
   },
   "private": true,
   "dependencies": {
-    "@angular/cdk": "^21.2.3",
+    "@angular/cdk": "^19.2.0",
     "@angular/common": "^19.2.0",
     "@angular/compiler": "^19.2.0",
     "@angular/core": "^19.2.0",
@@ -40,12 +45,51 @@
     "@angular/compiler-cli": "^19.2.0",
     "@types/jasmine": "~5.1.0",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3",
     "jasmine-core": "~5.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.2",
+    "wait-on": "^9.1.0"
+  },
+  "main": "electron/main.js",
+  "description": "Creatio OData ERD visualization tool",
+  "author": "Bert Grantges",
+  "build": {
+    "appId": "co.grantges.entitymap",
+    "productName": "Entity Map",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "!electron/launch.js",
+      "dist/entity-map/browser/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development"
+    }
   }
 }
