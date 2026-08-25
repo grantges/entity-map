@@ -37,8 +37,12 @@ yarn-error.log
 testem.log
 /typings
 
-# Internal docs (reviews, plans)
-/docs
+# Internal docs (reviews, plans) stay untracked; published product docs do not.
+/docs/*
+!/docs/ARCHITECTURE.md
+!/docs/DEVELOPMENT.md
+!/docs/SECURITY.md
+!/docs/DISTRIBUTION.md
 
 # Test data
 *.xml
