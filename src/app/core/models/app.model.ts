@@ -1,7 +1,56 @@
 import { ODataEntityType, ODataProperty } from './entity.model';
 
-// === Environment Storage ===
+// === Environments ===
 
+/**
+ * Live-connection details for an environment.
+ *
+ * Presence of this object is what makes an environment "connected" -- it can
+ * pull a fresh schema. Absence means the schema came from a file.
+ */
+export interface EnvironmentConnection {
+  url: string;        // e.g., https://myorg.creatio.com
+  username: string;
+  /** True when a password is held in the OS keychain (desktop only). */
+  hasStoredPassword?: boolean;
+  /** ISO timestamp of the last successful schema pull. */
+  lastPulledAt?: string;
+}
+
+/**
+ * An environment is the single unit of work in the app. A connection is not a
+ * separate thing you manage -- it is an optional capability of an environment.
+ *
+ * Three valid states:
+ *   schema + no connection  -> imported from a file, cannot refresh itself
+ *   schema + connection     -> connected; can pull the latest schema
+ *   no schema + connection  -> connected but never pulled yet
+ */
+export interface Environment {
+  id: string;
+  name: string;
+  createdAt: string;
+  /** Schema snapshot metadata. Absent until a schema has been imported. */
+  entityCount?: number;
+  namespace?: string;
+  savedAt?: string;
+  sizeBytes?: number;
+  connection?: EnvironmentConnection;
+}
+
+/** True when this environment holds an imported schema. */
+export function hasSchema(env: Environment): boolean {
+  return env.savedAt !== undefined && env.entityCount !== undefined;
+}
+
+/** True when this environment can pull a fresh schema from a server. */
+export function isConnected(env: Environment): boolean {
+  return env.connection !== undefined;
+}
+
+// === Legacy shapes (migration only) ===
+
+/** @deprecated Pre-merge shape. Read during migration, never written. */
 export interface SavedEnvironment {
   id: string;
   name: string;
@@ -11,12 +60,11 @@ export interface SavedEnvironment {
   sizeBytes: number;
 }
 
-// === OData Connection ===
-
+/** @deprecated Pre-merge shape. Read during migration, never written. */
 export interface CreatioConnection {
   id: string;
   name: string;
-  url: string;       // e.g., https://myorg.creatio.com
+  url: string;
   username: string;
   savedAt: string;
 }

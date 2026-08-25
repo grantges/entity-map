@@ -8,19 +8,26 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MetadataParserService } from '../../../../core/services/metadata-parser.service';
 import { MetadataStoreService } from '../../../../core/services/metadata-store.service';
-import { EnvironmentStorageService, SavedEnvironment } from '../../../../core/services/environment-storage.service';
-import { ODataConnectionService, CreatioConnection } from '../../../../core/services/odata-connection.service';
+import { EnvironmentStorageService, Environment, hasSchema } from '../../../../core/services/environment-storage.service';
+import { ODataConnectionService } from '../../../../core/services/odata-connection.service';
 import { ThemeService } from '../../../../core/services/theme.service';
+import { IS_ELECTRON } from '../../../../core/platform/platform.model';
 import { ParseResult } from '../../../../core/models/entity.model';
 import { formatDate as sharedFormatDate, formatSize as sharedFormatSize } from '../../../../core/utils/format';
 import { IconComponent } from '../../../../shared/atoms/icon/icon.component';
+import { BadgeComponent } from '../../../../shared/atoms/badge/badge.component';
 
 @Component({
   selector: 'em-upload-screen',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, BadgeComponent],
   template: `
     <div class="upload-screen">
+      @if (isElectron) {
+        <!-- The upload screen has no toolbar, so without this the window has
+             no draggable region at all before a schema is loaded. -->
+        <div class="upload-screen__drag-strip"></div>
+      }
       <div class="upload-card">
         <div class="upload-card__icon">
           <em-icon name="database" [size]="48" />
@@ -30,32 +37,76 @@ import { IconComponent } from '../../../../shared/atoms/icon/icon.component';
           Visualize Creatio OData metadata as interactive entity relationship diagrams
         </p>
 
-        <!-- Saved Environments -->
+        <!-- Unified environment picker: cached imports and live
+             connections are the same kind of thing, so they share one list. -->
         @if (envService.hasEnvironments()) {
-          <div class="env-section">
-            <div class="env-section__label">Saved Environments</div>
-            @for (env of envService.environments(); track env.id) {
-              <div class="env-card">
-                <button class="env-card__main" (click)="loadEnvironment(env)">
-                  <div class="env-card__info">
-                    <span class="env-card__name">{{ env.name }}</span>
-                    <span class="env-card__meta">
-                      {{ env.entityCount }} entities
-                      &middot; {{ formatDate(env.savedAt) }}
-                      &middot; {{ formatSize(env.sizeBytes) }}
+          <div class="env-picker">
+            <div class="env-picker__label">Open an environment</div>
+            <button class="env-picker__trigger" (click)="pickerOpen.set(!pickerOpen())">
+              <span class="env-picker__trigger-text">
+                {{ envService.environments().length }} saved
+                {{ envService.environments().length === 1 ? 'environment' : 'environments' }}
+              </span>
+              <em-icon [name]="pickerOpen() ? 'chevron-up' : 'chevron-down'" [size]="16" />
+            </button>
+
+            @if (pickerOpen()) {
+              <div class="env-picker__backdrop" (click)="pickerOpen.set(false)"></div>
+              <div class="env-picker__list" role="menu">
+                @for (env of envService.environments(); track env.id) {
+                  <button class="env-option" (click)="chooseEnvironment(env)">
+                    <em-icon [name]="env.connection ? 'wifi' : 'upload'" [size]="14" />
+                    <span class="env-option__info">
+                      <span class="env-option__name">{{ env.name }}</span>
+                      <span class="env-option__meta">{{ describe(env) }}</span>
                     </span>
-                  </div>
-                  <em-icon name="chevron-right" [size]="16" />
-                </button>
-                <button class="env-card__delete" (click)="deleteEnvironment(env.id, $event)"
-                  title="Delete environment">
-                  <em-icon name="trash" [size]="14" />
-                </button>
+                    <em-badge
+                      [text]="env.connection ? 'Connected' : 'File'"
+                      [variant]="env.connection ? 'count' : 'custom'" />
+                  </button>
+                }
               </div>
             }
-            <div class="env-section__divider">
-              <span>or upload a new file</span>
+          </div>
+
+          <!-- Password prompt for a connected environment with no stored password -->
+          @if (needsPassword()) {
+            <div class="pw-prompt">
+              <div class="pw-prompt__title">
+                Connect to {{ needsPassword()!.name }}
+              </div>
+              <div class="pw-prompt__meta">
+                {{ needsPassword()!.connection!.username }} &middot;
+                {{ needsPassword()!.connection!.url }}
+              </div>
+              <input class="live-connect__input" type="password" placeholder="Password"
+                [(ngModel)]="pullPassword"
+                (keydown.enter)="confirmPull()" />
+              @if (canStorePassword()) {
+                <label class="sidebar__checkbox">
+                  <input type="checkbox" [(ngModel)]="rememberPassword" />
+                  Remember in system keychain
+                </label>
+              }
+              <div class="pw-prompt__actions">
+                <button class="env-name-prompt__btn" [disabled]="!pullPassword || odataService.connecting()"
+                  (click)="confirmPull()">
+                  @if (odataService.connecting()) {
+                    {{ odataService.progress() }}
+                  } @else {
+                    Connect & Pull
+                  }
+                </button>
+                <button class="pw-prompt__cancel" (click)="cancelPull()">Cancel</button>
+              </div>
+              @if (odataService.error()) {
+                <div class="upload-card__error">{{ odataService.error() }}</div>
+              }
             </div>
+          }
+
+          <div class="env-section__divider">
+            <span>or add a new environment</span>
           </div>
         }
 
@@ -96,26 +147,6 @@ import { IconComponent } from '../../../../shared/atoms/icon/icon.component';
         } @else {
           <!-- Live connection form -->
           <div class="live-connect">
-            @if (odataService.connections().length > 0) {
-              <div class="live-connect__saved">
-                <div class="live-connect__label">Saved Connections</div>
-                @for (conn of odataService.connections(); track conn.id) {
-                  <div class="env-card">
-                    <button class="env-card__main" (click)="prefillConnection(conn)">
-                      <div class="env-card__info">
-                        <span class="env-card__name">{{ conn.name }}</span>
-                        <span class="env-card__meta">{{ conn.url }} &middot; {{ conn.username }}</span>
-                      </div>
-                    </button>
-                    <button class="env-card__delete" (click)="odataService.deleteConnection(conn.id)" title="Remove">
-                      <em-icon name="trash" [size]="14" />
-                    </button>
-                  </div>
-                }
-                <div class="env-section__divider"><span>or connect to a new environment</span></div>
-              </div>
-            }
-
             <input class="live-connect__input" placeholder="Environment URL (e.g., https://myorg.creatio.com)"
               [(ngModel)]="connectUrl" autocomplete="url" />
             <input class="live-connect__input" placeholder="Username"
@@ -123,9 +154,12 @@ import { IconComponent } from '../../../../shared/atoms/icon/icon.component';
             <input class="live-connect__input" type="password" placeholder="Password"
               [(ngModel)]="connectPassword" autocomplete="current-password" />
 
-            <label class="sidebar__checkbox">
-              <input type="checkbox" [(ngModel)]="connectSave" /> Save connection for later
-            </label>
+            @if (canStorePassword()) {
+              <label class="sidebar__checkbox">
+                <input type="checkbox" [(ngModel)]="connectSave" />
+                Remember password in system keychain
+              </label>
+            }
 
             <button class="live-connect__btn"
               [disabled]="odataService.connecting() || !connectUrl || !connectUsername || !connectPassword"
@@ -467,6 +501,83 @@ import { IconComponent } from '../../../../shared/atoms/icon/icon.component';
         &:hover { background: var(--em-color-accent-hover); }
       }
 
+      /* Unified environment picker */
+      .env-picker { width: 100%; margin-bottom: var(--em-space-3); position: relative; }
+      .env-picker__label {
+        font-size: var(--em-font-size-xs); font-weight: 600;
+        color: var(--em-color-text-muted); text-transform: uppercase;
+        letter-spacing: 0.05em; margin-bottom: var(--em-space-2);
+      }
+      .env-picker__trigger {
+        display: flex; align-items: center; justify-content: space-between;
+        width: 100%; padding: 10px 12px;
+        background: var(--em-color-bg-input);
+        border: 1px solid var(--em-color-border-input);
+        border-radius: var(--em-radius-md);
+        color: var(--em-color-text-primary); font-size: 13px; cursor: pointer;
+        &:hover { border-color: var(--em-color-accent); }
+      }
+      .env-picker__trigger-text { font-weight: 500; }
+      /* Overlays the card rather than expanding it -- an expanding panel
+       * reflows everything below it and grows without bound as environments
+       * accumulate. */
+      .env-picker__list {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        z-index: 20;
+        background: var(--em-color-bg-primary);
+        border: 1px solid var(--em-color-border);
+        border-radius: var(--em-radius-md);
+        box-shadow: var(--em-shadow-lg);
+        overflow: hidden auto;
+        max-height: 280px;
+      }
+      /* Catches the outside click that dismisses the menu. */
+      .env-picker__backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+      }
+      .env-option {
+        display: flex; align-items: center; gap: var(--em-space-3);
+        width: 100%; padding: var(--em-space-3) var(--em-space-4);
+        background: none; border: none; border-bottom: 1px solid var(--em-color-border);
+        color: var(--em-color-text-primary); cursor: pointer; text-align: left;
+        &:last-child { border-bottom: none; }
+        &:hover { background: var(--em-color-bg-hover); }
+      }
+      .env-option__info { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+      .env-option__name {
+        font-weight: 600; font-size: var(--em-font-size-sm);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .env-option__meta { font-size: var(--em-font-size-xs); color: var(--em-color-text-muted); }
+
+      /* Password prompt for a connected environment */
+      .pw-prompt {
+        width: 100%; display: flex; flex-direction: column; gap: var(--em-space-3);
+        padding: var(--em-space-4); margin-bottom: var(--em-space-3);
+        border: 1px solid var(--em-color-border);
+        border-radius: var(--em-radius-md);
+        background: var(--em-color-bg-secondary);
+      }
+      .pw-prompt__title { font-weight: 600; font-size: var(--em-font-size-sm); }
+      .pw-prompt__meta {
+        font-size: var(--em-font-size-xs); color: var(--em-color-text-muted);
+        margin-top: calc(-1 * var(--em-space-2));
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .pw-prompt__actions { display: flex; gap: var(--em-space-2); align-items: center; }
+      .pw-prompt__cancel {
+        height: 36px; padding: 0 var(--em-space-3);
+        background: none; border: 1px solid var(--em-color-border);
+        border-radius: var(--em-radius-md); color: var(--em-color-text-secondary);
+        font-size: var(--em-font-size-sm); cursor: pointer;
+        &:hover { background: var(--em-color-bg-hover); }
+      }
+
       .upload-screen__theme-btn {
         position: absolute;
         top: var(--em-space-4);
@@ -497,6 +608,12 @@ export class UploadScreenComponent {
   readonly envService = inject(EnvironmentStorageService);
   readonly odataService = inject(ODataConnectionService);
   readonly themeService = inject(ThemeService);
+  readonly isElectron = inject(IS_ELECTRON);
+
+  constructor() {
+    // Only offer to remember a password when the host can do it securely.
+    this.envService.canStorePassword().then((ok) => this.canStorePassword.set(ok));
+  }
 
   readonly environmentReady = output<void>();
 
@@ -506,6 +623,14 @@ export class UploadScreenComponent {
   readonly pendingParseResult = signal<ParseResult | null>(null);
   envName = '';
   readonly uploadMode = signal<'file' | 'live'>('file');
+
+  // Environment picker
+  readonly pickerOpen = signal(false);
+  /** Connected environment awaiting a password before it can pull. */
+  readonly needsPassword = signal<Environment | null>(null);
+  readonly canStorePassword = signal(false);
+  pullPassword = '';
+  rememberPassword = true;
 
   // Live connection form
   connectUrl = '';
@@ -555,7 +680,7 @@ export class UploadScreenComponent {
     if (!result) return;
 
     const name = this.envName.trim() || 'Untitled';
-    const saved = await this.envService.save(name, result);
+    const saved = await this.envService.createFromFile(name, result);
     this.store.setEnvironmentId(saved.id);
     this.store.loadFromParseResult(result);
     this.pendingParseResult.set(null);
@@ -563,26 +688,90 @@ export class UploadScreenComponent {
     this.environmentReady.emit();
   }
 
-  async loadEnvironment(env: SavedEnvironment): Promise<void> {
+  /** One-line summary used in the picker. */
+  describe(env: Environment): string {
+    if (!hasSchema(env)) return 'Connected \u00b7 not pulled yet';
+    const parts = [`${env.entityCount} entities`, this.formatDate(env.savedAt!)];
+    if (env.sizeBytes) parts.push(this.formatSize(env.sizeBytes));
+    return parts.join(' \u00b7 ');
+  }
+
+  /**
+   * Opening is always instant when a schema is cached; a connected environment
+   * that has never pulled needs credentials first.
+   */
+  async chooseEnvironment(env: Environment): Promise<void> {
+    this.pickerOpen.set(false);
+    if (hasSchema(env)) {
+      await this.openFromCache(env);
+      return;
+    }
+    await this.beginPull(env);
+  }
+
+  private async openFromCache(env: Environment): Promise<void> {
     const result = await this.envService.load(env.id);
-    if (result) {
+    if (!result) {
+      this.parseError.set('That environment\u2019s schema could not be read.');
+      return;
+    }
+    this.store.setEnvironmentId(env.id);
+    this.store.loadFromParseResult(result);
+    this.environmentReady.emit();
+  }
+
+  /** Use a stored password when there is one, otherwise ask. */
+  private async beginPull(env: Environment): Promise<void> {
+    const stored = env.connection?.hasStoredPassword
+      ? await this.envService.getPassword(env.id)
+      : null;
+    if (stored) {
+      await this.runPull(env, stored, false);
+      return;
+    }
+    this.pullPassword = '';
+    this.needsPassword.set(env);
+  }
+
+  async confirmPull(): Promise<void> {
+    const env = this.needsPassword();
+    if (!env || !this.pullPassword) return;
+    await this.runPull(env, this.pullPassword, this.rememberPassword);
+  }
+
+  cancelPull(): void {
+    this.needsPassword.set(null);
+    this.pullPassword = '';
+  }
+
+  private async runPull(env: Environment, password: string, remember: boolean): Promise<void> {
+    const conn = env.connection;
+    if (!conn) return;
+    try {
+      const xml = await this.odataService.connect(conn.url, conn.username, password);
+      const result = await this.parseXmlOnce(xml);
+      await this.envService.setSchema(env.id, result, true);
+      if (remember && this.canStorePassword()) {
+        await this.envService.savePassword(env.id, password);
+      }
+      this.needsPassword.set(null);
+      this.pullPassword = '';
       this.store.setEnvironmentId(env.id);
       this.store.loadFromParseResult(result);
       this.environmentReady.emit();
+    } catch {
+      // odataService.error() carries the message; the prompt stays open.
     }
   }
 
-  async deleteEnvironment(id: string, event: Event): Promise<void> {
-    event.stopPropagation();
-    await this.envService.delete(id);
-  }
-
-  // Live connection
-  prefillConnection(conn: CreatioConnection): void {
-    this.connectUrl = conn.url;
-    this.connectUsername = conn.username;
-    this.connectPassword = '';
-    this.connectSave = false;
+  /** Promise wrapper around the worker-backed parser. */
+  private parseXmlOnce(xml: string): Promise<ParseResult> {
+    return new Promise((resolve, reject) => {
+      this.parserService.parseXml(xml).subscribe({
+        next: resolve,
+        error: (e) => reject(e instanceof Error ? e : new Error('Failed to parse metadata')),
+      });
+    });
   }
 
   async liveConnect(): Promise<void> {
@@ -590,28 +779,30 @@ export class UploadScreenComponent {
       const xml = await this.odataService.connect(
         this.connectUrl, this.connectUsername, this.connectPassword
       );
+      const result = await this.parseXmlOnce(xml);
+      const host = new URL(this.connectUrl).hostname;
 
-      if (this.connectSave) {
-        this.odataService.saveConnection(
-          new URL(this.connectUrl).hostname,
-          this.connectUrl,
-          this.connectUsername
-        );
+      // A connection is not a separate record -- it creates an environment.
+      const env = await this.envService.createFromConnection(
+        host,
+        { url: this.connectUrl.replace(/\/+$/, ''), username: this.connectUsername },
+        result
+      );
+      if (this.connectSave && this.canStorePassword()) {
+        await this.envService.savePassword(env.id, this.connectPassword);
       }
 
-      this.parserService.parseXml(xml).subscribe({
-        next: (result) => {
-          this.pendingParseResult.set(result);
-          this.envName = new URL(this.connectUrl).hostname;
-        },
-        error: (err) => {
-          this.parseError.set(err.message || 'Failed to parse metadata');
-        },
-      });
+      this.connectPassword = '';
+      this.store.setEnvironmentId(env.id);
+      this.store.loadFromParseResult(result);
+      this.environmentReady.emit();
     } catch (e: unknown) {
-      // Error is already set by odataService
+      if (!this.odataService.error()) {
+        this.parseError.set(e instanceof Error ? e.message : 'Connection failed');
+      }
     }
   }
+
 
   formatDate(iso: string): string {
     return sharedFormatDate(iso);

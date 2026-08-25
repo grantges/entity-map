@@ -1,26 +1,22 @@
 import { Injectable, signal } from '@angular/core';
-import { CreatioConnection } from '../models/app.model';
-import { generateId } from '../utils/generate-id';
 
-export type { CreatioConnection } from '../models/app.model';
-
-const LS_KEY_CONNECTIONS = 'em-creatio-connections';
+/**
+ * Fetches OData metadata from a live Creatio.
+ *
+ * Connection RECORDS are not stored here -- they are part of an Environment
+ * (see EnvironmentStorageService). This service is stateless with respect to
+ * which environment is being pulled; it just authenticates and fetches.
+ */
 
 @Injectable({ providedIn: 'root' })
 export class ODataConnectionService {
-  private _connections = signal<CreatioConnection[]>([]);
   private _connecting = signal<boolean>(false);
   private _progress = signal<string>('');
   private _error = signal<string>('');
 
-  readonly connections = this._connections.asReadonly();
   readonly connecting = this._connecting.asReadonly();
   readonly progress = this._progress.asReadonly();
   readonly error = this._error.asReadonly();
-
-  constructor() {
-    this.loadConnections();
-  }
 
   /**
    * Connect to a Creatio environment, authenticate, and pull OData metadata.
@@ -59,28 +55,6 @@ export class ODataConnectionService {
       this._connecting.set(false);
       this._progress.set('');
     }
-  }
-
-  /** Save connection info (NOT password — browser handles that via autocomplete) */
-  saveConnection(name: string, url: string, username: string): CreatioConnection {
-    const conn: CreatioConnection = {
-      id: generateId(),
-      name,
-      url: url.replace(/\/+$/, ''),
-      username,
-      savedAt: new Date().toISOString(),
-    };
-
-    const conns = [...this._connections(), conn];
-    this._connections.set(conns);
-    localStorage.setItem(LS_KEY_CONNECTIONS, JSON.stringify(conns));
-    return conn;
-  }
-
-  deleteConnection(id: string): void {
-    const conns = this._connections().filter((c) => c.id !== id);
-    this._connections.set(conns);
-    localStorage.setItem(LS_KEY_CONNECTIONS, JSON.stringify(conns));
   }
 
   // === Private ===
@@ -143,14 +117,4 @@ export class ODataConnectionService {
     return xml;
   }
 
-  private loadConnections(): void {
-    try {
-      const json = localStorage.getItem(LS_KEY_CONNECTIONS);
-      if (json) {
-        this._connections.set(JSON.parse(json));
-      }
-    } catch {
-      this._connections.set([]);
-    }
-  }
 }

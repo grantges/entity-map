@@ -1,7 +1,6 @@
 import { Component, Input, Output, EventEmitter, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SearchDropdownComponent } from '../../molecules/search-dropdown/search-dropdown.component';
-import { DepthSelectorComponent } from '../../molecules/depth-selector/depth-selector.component';
 import { IconComponent } from '../../atoms/icon/icon.component';
 import { BadgeComponent } from '../../atoms/badge/badge.component';
 import { EntityIndex } from '../../../core/models/entity.model';
@@ -12,7 +11,6 @@ import { EntityIndex } from '../../../core/models/entity.model';
   imports: [
     CommonModule,
     SearchDropdownComponent,
-    DepthSelectorComponent,
     IconComponent,
     BadgeComponent,
   ],
@@ -36,34 +34,18 @@ import { EntityIndex } from '../../../core/models/entity.model';
           placeholder="Search entities... (⌘K)"
           (entitySelected)="entitySelected.emit($event)"
         />
+
+        <button
+          class="toolbar__icon-btn toolbar__new-entity-btn"
+          (click)="createEntity.emit()"
+          title="New Entity"
+        >
+          <em-icon name="plus" [size]="16" />
+        </button>
       </div>
 
-      <div class="toolbar__center">
+      <div class="toolbar__right">
         @if (selectedEntity) {
-          <em-depth-selector
-            [depth]="depth"
-            (depthChange)="depthChange.emit($event)"
-          />
-
-          <div class="toolbar__separator"></div>
-
-          <button
-            class="toolbar__icon-btn"
-            [class.toolbar__icon-btn--active]="showSystemProps"
-            (click)="showSystemPropsChange.emit(!showSystemProps)"
-            title="Show system properties (⌘.)"
-          >
-            <em-icon [name]="showSystemProps ? 'eye' : 'eye-off'" [size]="16" />
-          </button>
-
-          <button
-            class="toolbar__icon-btn"
-            (click)="layoutDirectionChange.emit(layoutDirection === 'LR' ? 'TB' : 'LR')"
-            [title]="'Layout: ' + (layoutDirection === 'LR' ? 'Horizontal' : 'Vertical')"
-          >
-            <em-icon [name]="layoutDirection === 'LR' ? 'layout-horizontal' : 'layout-vertical'" [size]="16" />
-          </button>
-
           <button
             class="toolbar__icon-btn"
             (click)="fitToScreen.emit()"
@@ -71,11 +53,7 @@ import { EntityIndex } from '../../../core/models/entity.model';
           >
             <em-icon name="maximize" [size]="16" />
           </button>
-        }
-      </div>
 
-      <div class="toolbar__right">
-        @if (selectedEntity) {
           <button
             class="toolbar__icon-btn"
             (click)="openSidebar.emit()"
@@ -95,8 +73,27 @@ import { EntityIndex } from '../../../core/models/entity.model';
           <div class="toolbar__separator"></div>
         }
 
+        @if (canPull) {
+          <button
+            class="toolbar__icon-btn"
+            [disabled]="pulling"
+            (click)="pullLatest.emit()"
+            [title]="pulling ? 'Pulling latest schema…' : 'Pull latest schema'"
+          >
+            <em-icon name="refresh" [size]="16" />
+          </button>
+        }
+
         <button class="toolbar__icon-btn" (click)="openSettings.emit()" title="Settings (⌘,)">
           <em-icon name="settings" [size]="16" />
+        </button>
+
+        <button
+          class="toolbar__icon-btn"
+          (click)="closeEnvironment.emit()"
+          title="Close environment (⌘⇧W)"
+        >
+          <em-icon name="log-out" [size]="16" />
         </button>
       </div>
     </div>
@@ -117,7 +114,6 @@ import { EntityIndex } from '../../../core/models/entity.model';
       }
 
       .toolbar__left,
-      .toolbar__center,
       .toolbar__right {
         display: flex;
         align-items: center;
@@ -127,10 +123,6 @@ import { EntityIndex } from '../../../core/models/entity.model';
       .toolbar__left {
         flex: 1;
         min-width: 0;
-      }
-
-      .toolbar__center {
-        flex-shrink: 0;
       }
 
       .toolbar__right {
@@ -181,25 +173,36 @@ import { EntityIndex } from '../../../core/models/entity.model';
           background: var(--em-color-accent-subtle);
         }
       }
+
+      .toolbar__new-entity-btn {
+        color: var(--em-color-accent);
+        border: 1px dashed var(--em-color-border);
+        &:hover {
+          border-color: var(--em-color-accent);
+          background: var(--em-color-accent-subtle);
+        }
+      }
     `,
   ],
 })
 export class ToolbarComponent {
   @Input() entityIndex: EntityIndex[] = [];
   @Input() entityCount = 0;
+  /** True when the open environment has a live connection it can refresh from. */
+  @Input() canPull = false;
+  @Input() pulling = false;
   @Input() selectedEntity: string | null = null;
-  @Input() depth = 1;
-  @Input() showSystemProps = false;
-  @Input() layoutDirection: 'LR' | 'TB' = 'LR';
 
   @Output() entitySelected = new EventEmitter<string>();
-  @Output() depthChange = new EventEmitter<number>();
-  @Output() showSystemPropsChange = new EventEmitter<boolean>();
-  @Output() layoutDirectionChange = new EventEmitter<'LR' | 'TB'>();
   @Output() fitToScreen = new EventEmitter<void>();
   @Output() openSidebar = new EventEmitter<void>();
   @Output() openExport = new EventEmitter<void>();
   @Output() openSettings = new EventEmitter<void>();
+  /** Pull a fresh schema; only offered for connected environments. */
+  @Output() pullLatest = new EventEmitter<void>();
+  /** Return to the environment picker without restarting the app. */
+  @Output() closeEnvironment = new EventEmitter<void>();
+  @Output() createEntity = new EventEmitter<void>();
 
   @ViewChild('searchDropdown') searchDropdown!: SearchDropdownComponent;
 

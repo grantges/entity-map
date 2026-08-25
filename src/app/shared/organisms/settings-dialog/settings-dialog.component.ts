@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IconComponent } from '../../atoms/icon/icon.component';
 import { AiService } from '../../../core/services/ai.service';
+import { EnvironmentStorageService } from '../../../core/services/environment-storage.service';
 import { ODataConnectionService } from '../../../core/services/odata-connection.service';
 import { BaselineService } from '../../../core/services/baseline.service';
 import { ThemeService } from '../../../core/services/theme.service';
@@ -29,7 +30,7 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
             <button class="nav-item" [class.nav-item--active]="activeTab() === 'ai'"
               (click)="activeTab.set('ai')">AI / OpenAI</button>
             <button class="nav-item" [class.nav-item--active]="activeTab() === 'connections'"
-              (click)="activeTab.set('connections')">Connections</button>
+              (click)="activeTab.set('connections')">Environments</button>
             <button class="nav-item" [class.nav-item--active]="activeTab() === 'baselines'"
               (click)="activeTab.set('baselines')">Baselines</button>
           </div>
@@ -125,25 +126,45 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
               </div>
             }
 
-            <!-- ===== CONNECTIONS ===== -->
+            <!-- ===== ENVIRONMENTS ===== -->
             @if (activeTab() === 'connections') {
               <div class="section">
-                <h3 class="section__title">Saved Creatio Connections</h3>
+                <h3 class="section__title">Environments</h3>
                 <p class="section__desc">
-                  Saved connection endpoints for live schema pulling. Passwords are managed by your browser's credential manager.
+                  Every schema you have imported. A connected environment can pull a
+                  fresh schema; a file environment is updated by importing again.
+                  Deleting removes the cached schema and any saved password.
                 </p>
 
-                @if (odataService.connections().length === 0) {
-                  <div class="empty-state">No saved connections</div>
+                @if (envService.environments().length === 0) {
+                  <div class="empty-state">No environments yet</div>
                 }
 
-                @for (conn of odataService.connections(); track conn.id) {
+                @for (env of envService.environments(); track env.id) {
                   <div class="conn-card">
                     <div class="conn-card__info">
-                      <span class="conn-card__name">{{ conn.name }}</span>
-                      <span class="conn-card__meta">{{ conn.url }} · {{ conn.username }}</span>
+                      <input class="field__input" [value]="env.name"
+                        (change)="renameEnv(env.id, $event)" />
+                      <span class="conn-card__meta">
+                        @if (env.connection) {
+                          {{ env.connection.url }} &middot; {{ env.connection.username }}
+                        } @else {
+                          Imported from file
+                        }
+                        @if (env.entityCount) {
+                          &middot; {{ env.entityCount }} entities
+                        } @else {
+                          &middot; not pulled yet
+                        }
+                      </span>
+                      @if (env.connection?.hasStoredPassword) {
+                        <button class="link-btn" (click)="forgetPassword(env.id)">
+                          Forget saved password
+                        </button>
+                      }
                     </div>
-                    <button class="conn-card__delete" (click)="odataService.deleteConnection(conn.id)">
+                    <button class="conn-card__delete" (click)="deleteEnv(env.id)"
+                      [title]="'Delete ' + env.name">
                       <em-icon name="trash" [size]="12" />
                     </button>
                   </div>
@@ -332,6 +353,11 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
     .conn-card__info { display: flex; flex-direction: column; gap: 2px; }
     .conn-card__name { font-weight: 500; font-size: 13px; color: var(--em-color-text-primary); }
     .conn-card__meta { font-size: 11px; color: var(--em-color-text-muted); }
+    .link-btn {
+      align-self: flex-start; margin-top: 4px; padding: 0;
+      background: none; border: none; color: var(--em-color-accent);
+      font-size: 11px; cursor: pointer; text-decoration: underline;
+    }
     .conn-card__delete {
       display: flex; align-items: center; background: none; border: none;
       color: var(--em-color-text-muted); cursor: pointer; padding: 4px;
@@ -348,6 +374,7 @@ import { formatDate as sharedFormatDate } from '../../../core/utils/format';
 export class SettingsDialogComponent {
   readonly aiService = inject(AiService);
   readonly odataService = inject(ODataConnectionService);
+  readonly envService = inject(EnvironmentStorageService);
   readonly baselineService = inject(BaselineService);
   readonly themeService = inject(ThemeService);
 
@@ -358,6 +385,19 @@ export class SettingsDialogComponent {
   @Output() clearCustomData = new EventEmitter<void>();
 
   readonly activeTab = signal<'general' | 'ai' | 'connections' | 'baselines'>('general');
+
+  renameEnv(id: string, event: Event): void {
+    const name = (event.target as HTMLInputElement).value.trim();
+    if (name) this.envService.rename(id, name);
+  }
+
+  async deleteEnv(id: string): Promise<void> {
+    await this.envService.delete(id);
+  }
+
+  async forgetPassword(id: string): Promise<void> {
+    await this.envService.deletePassword(id);
+  }
   readonly baselineMessage = signal('');
   baselineName = '';
 

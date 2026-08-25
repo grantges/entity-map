@@ -55,7 +55,10 @@ export class MetadataStoreService {
       const merged = this.getEntity(name);
       if (merged) map.set(name, merged);
     });
-    this._customEntities().forEach((e, name) => map.set(name, e));
+    this._customEntities().forEach((_, name) => {
+      const merged = this.getEntity(name);
+      if (merged) map.set(name, merged);
+    });
     return map;
   });
 
@@ -100,9 +103,7 @@ export class MetadataStoreService {
 
   getEntity(name: string): ODataEntityType | undefined {
     const custom = this._customEntities().get(name);
-    if (custom) return custom;
-
-    const original = this._entities().get(name);
+    const original = custom || this._entities().get(name);
     if (!original) return undefined;
 
     const customProps = this._customProperties().get(name);
@@ -163,6 +164,20 @@ export class MetadataStoreService {
     this._metadata.set(updated);
   }
 
+  /** Entity names that carry local work (a description, or custom columns). */
+  entitiesWithLocalWork(): Set<string> {
+    const names = new Set<string>();
+    this._metadata().forEach((meta, name) => {
+      const hasDesc = !!meta.description?.trim();
+      const hasCols = Object.values(meta.columnDescriptions ?? {}).some((d) => !!d?.trim());
+      if (hasDesc || hasCols) names.add(name);
+    });
+    this._customProperties().forEach((props, name) => {
+      if (props.length > 0) names.add(name);
+    });
+    return names;
+  }
+
   // === Custom Properties ===
 
   addCustomProperty(entityName: string, property: ODataProperty): void {
@@ -196,10 +211,59 @@ export class MetadataStoreService {
     this.rebuildEntityIndex();
   }
 
-  removeCustomEntity(name: string): void {
+  updateCustomEntityBaseType(name: string, baseType: string | undefined): void {
+    const entity = this._customEntities().get(name);
+    if (!entity) return;
     const updated = new Map(this._customEntities());
-    updated.delete(name);
+    updated.set(name, { ...entity, baseType });
     this._customEntities.set(updated);
+  }
+
+  renameCustomEntity(oldName: string, newName: string): void {
+    const entity = this._customEntities().get(oldName);
+    if (!entity) return;
+    const updated = new Map(this._customEntities());
+    updated.delete(oldName);
+    updated.set(newName, { ...entity, name: newName });
+    this._customEntities.set(updated);
+
+    // Also move custom properties
+    const props = this._customProperties().get(oldName);
+    if (props && props.length > 0) {
+      const updatedProps = new Map(this._customProperties());
+      updatedProps.delete(oldName);
+      updatedProps.set(newName, props);
+      this._customProperties.set(updatedProps);
+    }
+
+    // Also move metadata
+    const meta = this._metadata().get(oldName);
+    if (meta) {
+      const updatedMeta = new Map(this._metadata());
+      updatedMeta.delete(oldName);
+      updatedMeta.set(newName, meta);
+      this._metadata.set(updatedMeta);
+    }
+
+    this.rebuildEntityIndex();
+  }
+
+  removeCustomEntity(name: string): void {
+    // Remove entity
+    const updatedEntities = new Map(this._customEntities());
+    updatedEntities.delete(name);
+    this._customEntities.set(updatedEntities);
+
+    // Remove all custom properties for this entity
+    const updatedProps = new Map(this._customProperties());
+    updatedProps.delete(name);
+    this._customProperties.set(updatedProps);
+
+    // Remove metadata (descriptions)
+    const updatedMeta = new Map(this._metadata());
+    updatedMeta.delete(name);
+    this._metadata.set(updatedMeta);
+
     this.rebuildEntityIndex();
   }
 
