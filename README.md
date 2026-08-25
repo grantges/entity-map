@@ -105,6 +105,7 @@ docs/                      Architecture, development, security, distribution
 | [Development](docs/DEVELOPMENT.md) | Scripts, workflows, and the traps that will cost you an hour |
 | [Security](docs/SECURITY.md) | TLS trust model, credential storage, Electron hardening |
 | [Distribution](docs/DISTRIBUTION.md) | Packaging, signing, notarisation, what is still missing |
+| [Contributing](CONTRIBUTING.md) | Branch model, PR workflow, verification bar |
 
 ---
 
