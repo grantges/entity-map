@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 is the declared floor in package.json engines.
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Build
+        run: npm run build
+
+      # ubuntu-latest ships Google Chrome preinstalled, but its exact binary name/path
+      # isn't a documented, stable contract (unlike e.g. CHROMEWEBDRIVER for chromedriver)
+      # and karma-chrome-launcher did not auto-discover Chrome on the dev machine used to
+      # build this suite. Resolve the binary explicitly with `which` rather than
+      # hardcoding a path, so this step keeps working even if the runner image changes
+      # how Chrome is installed.
+      - name: Resolve Chrome binary
+        run: |
+          CHROME_PATH="$(which google-chrome-stable || which google-chrome || which chromium-browser || which chromium)"
+          echo "Resolved Chrome binary: $CHROME_PATH"
+          echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
+
+      # ChromeHeadlessCI passes --no-sandbox; the runner has Chrome preinstalled.
+      # --code-coverage adds karma-coverage's text-summary reporter, which prints a
+      # coverage summary to this step's log. karma.conf.js sets no `check` thresholds,
+      # so this only reports coverage -- it cannot fail the build.
+      - name: Test with coverage
+        run: npm run test:coverage

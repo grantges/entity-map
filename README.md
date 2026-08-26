@@ -111,8 +111,7 @@ docs/                      Architecture, development, security, distribution
 
 ## Requirements
 
-Developed and tested on **Node 24**; no minimum is enforced in `package.json`, so older
-versions are untested rather than known-bad.
+Requires **Node 22 or newer**, enforced by `engines` in `package.json` and pinned in CI.
 
 A Creatio instance and credentials are needed for live connections. File import works
 entirely offline.
