@@ -102,6 +102,7 @@ describe('EntityGraphService cycles and caps', () => {
     const result = graphOver([hub, ...leaves]).buildGraph('Hub', 1, { maxNodes: 3 });
     const names = new Set(result.nodes.map((n) => n.entityName));
 
+    expect(result.connections.length).toBe(2);
     for (const c of result.connections) {
       expect(names.has(c.sourceEntity)).toBe(true);
       expect(names.has(c.targetEntity)).toBe(true);

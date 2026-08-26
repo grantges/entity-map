@@ -37,5 +37,8 @@ jobs:
           echo "CHROME_BIN=$CHROME_PATH" >> "$GITHUB_ENV"
 
       # ChromeHeadlessCI passes --no-sandbox; the runner has Chrome preinstalled.
-      - name: Test
-        run: npm test
+      # --code-coverage adds karma-coverage's text-summary reporter, which prints a
+      # coverage summary to this step's log. karma.conf.js sets no `check` thresholds,
+      # so this only reports coverage -- it cannot fail the build.
+      - name: Test with coverage
+        run: npm run test:coverage

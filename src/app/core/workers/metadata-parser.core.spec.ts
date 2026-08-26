@@ -100,8 +100,11 @@ describe('parseMetadataXml navigation properties', () => {
   });
 
   it('counts only single-valued navigations as related entities in the index', () => {
-    const accountIndex = parsedOk(METADATA).entityIndex[0];
+    const entityIndex = parsedOk(METADATA).entityIndex;
+    const accountIndex = entityIndex[0];
+    const contactIndex = entityIndex[1];
 
     expect(accountIndex.relatedEntityNames).toEqual([]);
+    expect(contactIndex.relatedEntityNames).toEqual(['Account', 'Contact']);
   });
 });
