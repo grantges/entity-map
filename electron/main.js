@@ -184,14 +184,23 @@ async function createWindow() {
     await mainWindow.loadURL(DEV_SERVER_URL);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    try {
-      server = await startServer({ root: DIST_ROOT, log: (m) => console.log(m) });
-    } catch (err) {
-      // Fail loudly: silently binding a different port would orphan the user's
-      // saved environments, which live on the origin the port is part of.
-      dialog.showErrorBox('Entity Map could not start', err.message);
-      app.quit();
-      return;
+    // Start the server ONCE per process, not once per window.
+    //
+    // On macOS closing the window does not quit the app, so this server is
+    // still listening when `activate` recreates the window. Starting a second
+    // one would bind the same fixed port, throw EADDRINUSE, and fire the
+    // loud-failure path below on a perfectly healthy app.
+    if (!server) {
+      try {
+        server = await startServer({ root: DIST_ROOT, log: (m) => console.log(m) });
+      } catch (err) {
+        // Fail loudly: silently binding a different port would orphan the
+        // user's saved environments, which live on the origin the port is
+        // part of.
+        dialog.showErrorBox('Entity Map could not start', err.message);
+        app.quit();
+        return;
+      }
     }
     await mainWindow.loadURL(server.origin);
   }
@@ -238,10 +247,15 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
+    // The window may have been closed while the app kept running (macOS), in
+    // which case there is nothing to focus and launching again would appear to
+    // do nothing. Recreate it, reusing the already-running server.
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createWindow();
+      return;
     }
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
   });
 
   app.whenReady().then(async () => {
@@ -262,7 +276,10 @@ if (!app.requestSingleInstanceLock()) {
     if (process.platform !== 'darwin') app.quit();
   });
 
-  app.on('before-quit', async () => {
-    if (server) await server.close();
+  app.on('before-quit', () => {
+    // Electron does not await this handler, so closing is best-effort; the OS
+    // releases the socket when the process exits regardless. Marking it async
+    // only implied a guarantee that was never there.
+    if (server) server.close();
   });
 }

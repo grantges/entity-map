@@ -105,6 +105,29 @@ html.em-platform-mac-frameless .toolbar {
   -webkit-app-region: drag;
 }
 
+/* Overlays that escape the toolbar's bounds opt out as a WHOLE, not just
+ * their buttons.
+ *
+ * The search dropdown is absolutely positioned and starts ~5px above the
+ * toolbar's lower edge, so its container -- including the padding wrapping the
+ * first row -- sat inside the drag rect and inherited `drag`. A mousedown there
+ * began a window drag and the click never reached the page, which is why the
+ * first option alone was unselectable.
+ *
+ * The descendant selector is load-bearing: `-webkit-app-region` does NOT
+ * inherit, so setting it on the container alone leaves the rows, padding and
+ * the "showing N of M" footer resolving to `none`. The rows happened to be
+ * covered by the `.toolbar button` rule below, but only while the dropdown
+ * sits inside a toolbar -- too fragile to rely on for a click target.
+ *
+ * Note this cannot be caught by document.elementFromPoint(): drag regions are
+ * rectangles handed to the window manager and intercept clicks before the page
+ * sees them, so DOM hit-testing reports the row as reachable either way. */
+html.em-platform-mac-frameless .search-dropdown__list,
+html.em-platform-mac-frameless .search-dropdown__list * {
+  -webkit-app-region: no-drag;
+}
+
 /* Anything the user can interact with must escape the drag region. */
 html.em-platform-mac-frameless .toolbar button,
 .em-platform-mac-frameless .toolbar input,
