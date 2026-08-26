@@ -85,8 +85,8 @@ npm run dist:mac    # see docs/DISTRIBUTION.md
 Jasmine specs in headless Chrome. It covers the logic core — graph traversal, schema
 diffing, `$metadata` parsing, schema export — and two component specs that assert
 against real rendered DOM. It does not cover the export pipeline, the diagram page, the
-network services, or persistence. Cite it for what it covers; do not cite it as evidence
-about anything else.
+network services, persistence, or the Electron main process (`electron/*.js`). Cite it
+for what it covers; do not cite it as evidence about anything else.
 
 The bar is:
 
