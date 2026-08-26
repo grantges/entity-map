@@ -1,6 +1,6 @@
 {
   "name": "entity-map",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -18,7 +18,9 @@
     "dist:win": "npm run build && electron-builder --win"
   },
   "private": true,
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@angular/cdk": "^19.2.0",
     "@angular/common": "^19.2.0",
