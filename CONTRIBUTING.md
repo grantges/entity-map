@@ -37,12 +37,35 @@ git checkout -b fix/12-thing
 
 npx tsc --noEmit -p tsconfig.app.json   # must be clean
 npm run build                            # must succeed
+npm test                                 # must pass
 
 git push -u origin fix/12-thing
 gh pr create --base dev
 ```
 
 Then review and merge on GitHub. Delete the branch after it lands.
+
+### Running tests
+
+```bash
+npm test           # single run, headless — what CI runs
+npm run test:watch # re-runs on save, visible browser
+npm run test:coverage
+```
+
+Fixtures and test doubles live in `src/testing/`. Build entities with `anEntity()` rather
+than hand-rolling them, and use `FakeMetadataStore` instead of the real store.
+
+Spec order is randomised (Jasmine's `random: true` default, left in place in
+`karma.conf.js`) so specs run in a different order each run; a failure that only shows up
+sometimes is more likely inter-spec state leakage than a fluke.
+
+If Karma cannot find a browser (`karma-chrome-launcher` does not always auto-discover a
+system Chrome install), point it at one explicitly:
+
+```bash
+export CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+```
 
 ### Releasing
 
@@ -58,17 +81,21 @@ npm run dist:mac    # see docs/DISTRIBUTION.md
 
 ## Before opening a PR
 
-**There is no automated test suite.** `src/` contains zero `.spec.ts` files and the
-Angular schematics are configured with `skipTests: true`, so `npm test` runs Karma
-against nothing. A green `npm test` proves nothing today — do not cite it as evidence.
+**There is an automated test suite, and it does not cover everything.** `npm test` runs
+Jasmine specs in headless Chrome. It covers the logic core — graph traversal, schema
+diffing, `$metadata` parsing, schema export — and two component specs that assert
+against real rendered DOM. It does not cover the export pipeline, the diagram page, the
+network services, or persistence. Cite it for what it covers; do not cite it as evidence
+about anything else.
 
-Until that changes, the bar is:
+The bar is:
 
 1. **`npx tsc --noEmit -p tsconfig.app.json`** — clean
 2. **`npm run build`** — succeeds
-3. **Exercise the change in the running app** — not just the built output
+3. **`npm test`** — passes, with a spec covering the change where the change is testable
+4. **Exercise the change in the running app** — not just the built output
 
-Point 3 matters more than it sounds. Several bugs in this codebase shipped a correct-
+Point 4 matters more than it sounds. Several bugs in this codebase shipped a correct-
 looking rule that did nothing: a global CSS rule losing a specificity tie to a component
 style, a `z-index` inert because the element was not positioned, an `@Output` declared
 and never bound. Grepping the bundle proves the code shipped, not that it works. See the
@@ -82,9 +109,6 @@ For UI changes, verify in this order:
 3. Read computed styles from the real rendered node, never a synthesised one
 
 `docs/DEVELOPMENT.md` documents how to drive the desktop app over CDP for this.
-
-> Adding tests would replace most of this checklist and is the single highest-value
-> improvement available to the project.
 
 ---
 
