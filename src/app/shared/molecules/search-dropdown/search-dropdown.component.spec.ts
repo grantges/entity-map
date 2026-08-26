@@ -112,12 +112,30 @@ describe('SearchDropdownComponent', () => {
   });
 
   it('restarts paging when a new query is typed', () => {
+    // Attach to the document so the list gets real layout: scrollHeight and
+    // clientHeight are 0 for a detached element, and onScroll needs both to
+    // decide whether the viewport is near the end.
+    document.body.appendChild(fixture.nativeElement);
+
     setItems(indexOf(...Array.from({ length: 120 }, (_, i) => `Entity${i + 1}`)));
     component.open();
     fixture.detectChanges();
 
+    const list: HTMLElement = fixture.nativeElement.querySelector('.search-dropdown__list');
+    list.scrollTop = list.scrollHeight;
+    list.dispatchEvent(new Event('scroll'));
+    fixture.detectChanges();
+
+    // Setup check: if this doesn't hold, the scroll didn't actually page
+    // anything in, and the "restarts" assertion below would be meaningless.
+    expect(component.visibleCount())
+      .withContext('setup: scrolling to the end should have paged in more than one page')
+      .toBeGreaterThan(50);
+
     typeQuery('Entity1');
 
     expect(component.visibleCount()).toBe(50);
+
+    document.body.removeChild(fixture.nativeElement);
   });
 });
