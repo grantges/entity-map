@@ -3,6 +3,14 @@ import { SearchDropdownComponent } from './search-dropdown.component';
 import { EntityIndex } from '../../../core/models/entity.model';
 import { anEntityIndex } from '../../../../testing';
 
+/**
+ * `-webkit-app-region` is a Chromium/Electron extension and is absent from the
+ * DOM typings, so read it through the property-name-agnostic accessor.
+ */
+function appRegion(el: Element): string {
+  return getComputedStyle(el).getPropertyValue('-webkit-app-region').trim();
+}
+
 function indexOf(...names: string[]): EntityIndex[] {
   return names.map((name) => anEntityIndex({ name }));
 }
@@ -147,5 +155,52 @@ describe('SearchDropdownComponent', () => {
     typeQuery('Entity1');
 
     expect(component.visibleCount()).toBe(50);
+  });
+
+  // Regression: issue #7. The toolbar is a window-drag region on the frameless
+  // macOS build, and the dropdown escapes its bounds while remaining its
+  // descendant. Only the row <button>s opted out, so the list container --
+  // including the padding wrapping the first row -- inherited `drag`, and a
+  // mousedown there began a window drag instead of selecting.
+  //
+  // This asserts the resolved cascade rather than clicking: macOS drag regions
+  // are handed to the window manager and intercept clicks before the page sees
+  // them, so a click test passes whether or not the bug is present.
+  describe('window-drag opt-out on the frameless desktop build', () => {
+    beforeEach(() => {
+      // styles.scss gates these rules on the class providePlatform() stamps
+      // onto <html> when running under Electron on macOS.
+      document.documentElement.classList.add('em-platform-mac-frameless');
+      document.body.appendChild(fixture.nativeElement);
+      setItems(indexOf('Account', 'Contact', 'Lead'));
+      component.open();
+      fixture.detectChanges();
+    });
+
+    afterEach(() => {
+      document.documentElement.classList.remove('em-platform-mac-frameless');
+    });
+
+    it('opts the whole list container out, not just the rows', () => {
+      const list: HTMLElement =
+        fixture.nativeElement.querySelector('.search-dropdown__list');
+
+      expect(appRegion(list))
+        .withContext('list container must not be draggable')
+        .toBe('no-drag');
+    });
+
+    it('leaves every row non-draggable, including the first', () => {
+      const rows: HTMLElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.search-dropdown__item')
+      );
+      expect(rows.length).toBeGreaterThan(1);
+
+      rows.forEach((row, i) => {
+        expect(appRegion(row))
+          .withContext(`row ${i} must not be draggable`)
+          .toBe('no-drag');
+      });
+    });
   });
 });
