@@ -20,6 +20,18 @@ describe('SearchDropdownComponent', () => {
     component = fixture.componentInstance;
   });
 
+  // Unconditional cleanup for the one spec that attaches the fixture to
+  // document.body (real layout is needed there for scrollHeight/clientHeight).
+  // Angular's own teardown does not remove a node appended outside its
+  // control (DomRenderer sets destroyNode = null), and spec order is
+  // randomised by default, so a leaked element could bleed into any later
+  // spec in the run. Hoisted into afterEach rather than a per-spec
+  // try/finally so every spec is protected the same way, including ones
+  // added later that also need to attach.
+  afterEach(() => {
+    fixture.nativeElement.parentNode?.removeChild(fixture.nativeElement);
+  });
+
   function setItems(items: EntityIndex[]): void {
     fixture.componentRef.setInput('items', items);
     fixture.detectChanges();
@@ -135,7 +147,5 @@ describe('SearchDropdownComponent', () => {
     typeQuery('Entity1');
 
     expect(component.visibleCount()).toBe(50);
-
-    document.body.removeChild(fixture.nativeElement);
   });
 });
