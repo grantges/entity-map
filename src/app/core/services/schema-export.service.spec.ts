@@ -89,6 +89,13 @@ describe('SchemaExportService.exportCreatioSchema', () => {
       packageName: 'UsrPackage',
     });
 
+    // A bare negative here would also pass if a bug dropped every entity
+    // (not just the unknown one) -- 'Nonexistent' would still be absent from
+    // an empty or malformed document. Pair it with a positive assertion,
+    // anchored on the entity's own element rather than the bare name (which
+    // could otherwise coincidentally appear in boilerplate), proving the
+    // known entity actually survived.
+    expect(xml).toContain('Name="Account"');
     expect(xml).not.toContain('Nonexistent');
   });
 
