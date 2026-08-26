@@ -273,12 +273,17 @@ export class MetadataStoreService {
 
   // === Search ===
 
-  searchEntities(query: string): EntityIndex[] {
+  /**
+   * All matching entities, uncapped. Callers decide how many to render --
+   * a cap buried here silently hides results (see issue #1).
+   */
+  searchEntities(query: string, limit?: number): EntityIndex[] {
     if (!query || query.length < 1) return [];
     const lower = query.toLowerCase();
-    return this._entityIndex()
-      .filter((e) => e.name.toLowerCase().includes(lower))
-      .slice(0, 50);
+    const matches = this._entityIndex().filter((e) =>
+      e.name.toLowerCase().includes(lower)
+    );
+    return limit === undefined ? matches : matches.slice(0, limit);
   }
 
   // === Clear ===
