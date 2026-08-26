@@ -96,6 +96,7 @@ describe('BaselineService.diffAgainstBaseline', () => {
 
     const diff = service.diffAgainstBaseline('baseline-1')!;
 
+    expect(diff.modifiedEntities.length).toBe(1);
     expect(diff.modifiedEntities[0].removedColumnNames).toEqual(['Name']);
     expect(diff.modifiedEntities[0].addedColumns).toEqual([]);
   });
@@ -111,7 +112,7 @@ describe('BaselineService.diffAgainstBaseline', () => {
     expect(diff.modifiedEntities).toEqual([]);
   });
 
-  it('survives a corrupt baseline index rather than throwing', () => {
+  it('survives a corrupt baseline index and stays usable', () => {
     localStorage.setItem(LS_KEY, 'not json');
     TestBed.configureTestingModule({
       providers: [
@@ -122,8 +123,16 @@ describe('BaselineService.diffAgainstBaseline', () => {
       ],
     });
 
+    // Construction must not throw despite the unparsable JSON, and the instance
+    // must remain functional afterwards. Note: this cannot distinguish the
+    // catch block's `this._baselines.set([])` from a bare `catch {}` -- the
+    // `_baselines` signal already defaults to `[]`, so the empty-list
+    // assertion below holds either way. That recovery assignment is simply
+    // not independently observable from a freshly constructed instance, so
+    // don't spend time chasing a stronger assertion for it.
     const service = TestBed.inject(BaselineService);
 
     expect(service.baselines()).toEqual([]);
+    expect(service.diffAgainstBaseline('anything')).toBeNull();
   });
 });
