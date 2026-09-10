@@ -347,16 +347,62 @@ interface PendingPull {
         color: var(--em-color-text-secondary);
         flex-shrink: 0;
       }
-      .stale-banner span { flex: 1; }
+      /* Deliberately NOT flex: 1. The action reads as part of the sentence it
+       * follows, so the message stays content-width and the pair sits together
+       * on the left; only the dismiss control is pushed to the far edge. */
+      .stale-banner span { min-width: 0; }
+      /* Looks like a link, sized like a control.
+       *
+       * The original was a bare underlined word with zero padding, so the hit
+       * area was the glyph bounds -- about 60x14px. Padding plus a min-height
+       * grow the target to ~28px tall without changing the visual weight, and
+       * the negative left margin keeps the text visually flush with the gap
+       * after the sentence rather than looking indented. The hover fill is
+       * what signals it is interactive now that it has no border. */
       .stale-banner__action {
-        background: none; border: none; padding: 0;
-        color: var(--em-color-accent); font-weight: 600;
-        font-size: var(--em-font-size-xs); cursor: pointer; text-decoration: underline;
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 var(--em-space-2);
+        margin-left: calc(-1 * var(--em-space-2));
+        background: none;
+        border: none;
+        border-radius: var(--em-radius-sm);
+        color: var(--em-color-accent);
+        font-weight: 600;
+        font-size: var(--em-font-size-xs);
+        text-decoration: underline;
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background var(--em-transition-fast);
+
+        &:hover { background: var(--em-color-bg-hover); }
+        &:focus-visible {
+          outline: 2px solid var(--em-color-border-focus);
+          outline-offset: 1px;
+        }
       }
       .stale-banner__close {
-        display: flex; align-items: center; justify-content: center;
-        background: none; border: none; color: var(--em-color-text-muted); cursor: pointer;
-        &:hover { color: var(--em-color-text-primary); }
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        background: none;
+        border: none;
+        border-radius: var(--em-radius-sm);
+        color: var(--em-color-text-muted);
+        cursor: pointer;
+        transition: all var(--em-transition-fast);
+
+        &:hover { background: var(--em-color-bg-hover); color: var(--em-color-text-primary); }
+        &:focus-visible {
+          outline: 2px solid var(--em-color-border-focus);
+          outline-offset: 2px;
+        }
       }
 
       /* Pull-latest dialogs */
