@@ -106,6 +106,7 @@ docs/                      Architecture, development, security, distribution
 | [Security](docs/SECURITY.md) | TLS trust model, credential storage, Electron hardening |
 | [Distribution](docs/DISTRIBUTION.md) | Packaging, signing, notarisation, what is still missing |
 | [Contributing](CONTRIBUTING.md) | Branch model, PR workflow, verification bar |
+| [VS Code feasibility](docs/VSCODE-FEASIBILITY.md) | Investigation into shipping as a VS Code extension (no decision made) |
 
 ---
 

@@ -43,6 +43,7 @@ testem.log
 !/docs/DEVELOPMENT.md
 !/docs/SECURITY.md
 !/docs/DISTRIBUTION.md
+!/docs/VSCODE-FEASIBILITY.md
 
 # Test data
 *.xml
