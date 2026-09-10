@@ -81,10 +81,22 @@ to earn it over time.
 Until signed, the app only runs on machines where the quarantine attribute is cleared by
 hand — fine for your own use, not for distribution.
 
-### 2. Nothing else blocks a macOS build
+### 2. Nothing else blocks a build
 
-Builds are universal (`x86_64 arm64`), so Intel and Apple Silicon are both covered, and
-the app carries its own icon. Signing is the only remaining hard blocker.
+macOS builds are universal (`x86_64 arm64`); the Windows installer carries both `x64` and
+`arm64`. The app has its own icon. Signing is the only remaining hard blocker.
+
+**Architectures are pinned explicitly in `package.json`, and must stay that way.** With no
+`arch` given, electron-builder targets whatever the *build host* is — building on Apple
+Silicon produced a Windows-on-ARM-only installer that would not run on the x64 machines
+that are nearly all Windows users, and nothing in the build output flagged it as wrong
+beyond one `archs=arm64` line. Check that line after any packaging change:
+
+```bash
+grep 'building.*target=' build.log
+#   target=nsis   … archs=x64, arm64
+#   target=macOS zip / DMG   arch=universal
+```
 
 ---
 
