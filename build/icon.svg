@@ -1,0 +1,70 @@
+<!--
+  Entity Map application icon.
+
+  Source of truth for build/icon.png, which electron-builder converts into
+  .icns and .ico at package time. Regenerate with: npm run icon
+
+  Geometry follows Apple's macOS app icon grid: the rounded body is 824x824
+  centred in a 1024x1024 canvas with a 185px corner radius. macOS does not
+  apply the squircle mask itself, so the artwork has to include it.
+
+  The glyph is the app's own visual signature: entity cards joined by
+  right-angle connectors, the same orthogonal routing the diagram canvas uses.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"   stop-color="#818cf8"/>
+      <stop offset="0.55" stop-color="#6366f1"/>
+      <stop offset="1"   stop-color="#4338ca"/>
+    </linearGradient>
+
+    <!-- Light rake across the top-left, the way macOS icons catch light. -->
+    <linearGradient id="sheen" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="cardShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#1e1b4b" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+
+  <!-- Body -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#sheen)"/>
+
+  <!-- Connectors first, so the cards cover the line ends. Routed as elbows,
+       matching the diagram canvas orthogonal edges. -->
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.92"
+     stroke-width="21" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M436 512 H508 V366 H588"/>
+    <path d="M436 512 H508 V658 H588"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="436" cy="512" r="19"/>
+    <circle cx="588" cy="366" r="15"/>
+    <circle cx="588" cy="658" r="15"/>
+  </g>
+
+  <!-- Primary entity card -->
+  <g filter="url(#cardShadow)">
+    <rect x="212" y="356" width="228" height="312" rx="30" fill="#ffffff"/>
+  </g>
+  <!-- Card header band -->
+  <path d="M212 386 a30 30 0 0 1 30 -30 h168 a30 30 0 0 1 30 30 v52 H212 Z" fill="#c7d2fe"/>
+  <g fill="#6366f1" opacity="0.66">
+    <rect x="250" y="474" width="152" height="28" rx="14"/>
+    <rect x="250" y="536" width="112" height="28" rx="14"/>
+  </g>
+
+  <!-- Related entity cards -->
+  <g filter="url(#cardShadow)">
+    <rect x="588" y="286" width="212" height="160" rx="26" fill="#ffffff"/>
+    <rect x="588" y="578" width="212" height="160" rx="26" fill="#ffffff"/>
+  </g>
+  <g fill="#6366f1" opacity="0.66">
+    <rect x="624" y="352" width="132" height="28" rx="14"/>
+    <rect x="624" y="644" width="132" height="28" rx="14"/>
+  </g>
+</svg>
