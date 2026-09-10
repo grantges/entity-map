@@ -155,8 +155,9 @@ html.em-platform-mac-frameless .toolbar button,
  * unclickable: `.toolbar` sets `z-index: 10` but never sets `position`, so that
  * z-index is inert and a positioned overlay always paints above it.
  *
- * The theme button follows this element in the DOM and is also positioned, so
- * it paints on top and stays clickable without needing its own opt-out. */
+ * The strip spans the full width, so anything else living in that top band --
+ * the theme toggle at top-right -- falls inside the drag rect and needs an
+ * explicit opt-out. See the note below it. */
 html.em-platform-mac-frameless .upload-screen__drag-strip {
   position: absolute;
   top: 0;
@@ -164,6 +165,24 @@ html.em-platform-mac-frameless .upload-screen__drag-strip {
   right: 0;
   height: 52px;
   -webkit-app-region: drag;
+}
+
+/* Regression: issue #13. The theme toggle sits at top-right of the upload
+ * screen, inside the drag strip's band.
+ *
+ * An earlier comment here claimed the button "paints on top and stays
+ * clickable without needing its own opt-out". That reasoning is wrong, and the
+ * search-dropdown note above says why: drag rects are handed to the window
+ * manager and intercept the mousedown before the page sees it, so paint order
+ * is irrelevant. Resolving to `none` is not enough either -- only an explicit
+ * `no-drag` subtracts from a drag rect.
+ *
+ * The descendant selector is required because -webkit-app-region does not
+ * inherit: without it the em-icon and its <svg> resolve to `none` and the
+ * middle of the button stays dead. */
+html.em-platform-mac-frameless .upload-screen__theme-btn,
+html.em-platform-mac-frameless .upload-screen__theme-btn * {
+  -webkit-app-region: no-drag;
 }
 
 /* The window already identifies the app (menu bar, dock, About panel), so the

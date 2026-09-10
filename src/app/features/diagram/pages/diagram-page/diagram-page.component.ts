@@ -348,15 +348,50 @@ interface PendingPull {
         flex-shrink: 0;
       }
       .stale-banner span { flex: 1; }
+      /* A real button, not an underlined word. As a bare text link the hit area
+       * was the glyph bounds -- roughly 60x14px -- far under a comfortable
+       * target and easy to miss on the first try. */
       .stale-banner__action {
-        background: none; border: none; padding: 0;
-        color: var(--em-color-accent); font-weight: 600;
-        font-size: var(--em-font-size-xs); cursor: pointer; text-decoration: underline;
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 var(--em-space-3);
+        background: var(--em-color-accent);
+        color: #fff;
+        border: none;
+        border-radius: var(--em-radius-sm);
+        font-weight: 600;
+        font-size: var(--em-font-size-xs);
+        white-space: nowrap;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: background var(--em-transition-fast);
+
+        &:hover { background: var(--em-color-accent-hover); }
+        &:focus-visible {
+          outline: 2px solid var(--em-color-border-focus);
+          outline-offset: 2px;
+        }
       }
       .stale-banner__close {
-        display: flex; align-items: center; justify-content: center;
-        background: none; border: none; color: var(--em-color-text-muted); cursor: pointer;
-        &:hover { color: var(--em-color-text-primary); }
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        background: none;
+        border: none;
+        border-radius: var(--em-radius-sm);
+        color: var(--em-color-text-muted);
+        cursor: pointer;
+        transition: all var(--em-transition-fast);
+
+        &:hover { background: var(--em-color-bg-hover); color: var(--em-color-text-primary); }
+        &:focus-visible {
+          outline: 2px solid var(--em-color-border-focus);
+          outline-offset: 2px;
+        }
       }
 
       /* Pull-latest dialogs */
