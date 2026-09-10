@@ -15,7 +15,8 @@
     "electron:start": "npm run build && node electron/launch.js",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win"
+    "dist:win": "npm run build && electron-builder --win",
+    "icon": "node scripts/build-icon.mjs"
   },
   "private": true,
   "engines": {
@@ -93,18 +94,21 @@
             "universal"
           ]
         }
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "win": {
       "target": [
         "nsis"
-      ]
+      ],
+      "icon": "build/icon.png"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Development"
+      "category": "Development",
+      "icon": "build/icon.png"
     }
   }
 }

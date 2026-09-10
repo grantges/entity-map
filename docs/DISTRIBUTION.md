@@ -32,10 +32,21 @@ first thing to check.
 
 | Artifact | Size |
 |---|---|
-| `Entity Map-<version>-arm64.dmg` | ~131 MB |
-| `Entity Map.app` | ~336 MB |
+| `Entity Map-<version>-universal.dmg` | ~225 MB |
+| `Entity Map-<version>-universal-mac.zip` | ~240 MB |
+| `Entity Map.app` | ~600 MB |
 
-Most of that is the Electron runtime.
+Most of that is the Electron runtime, carried twice: a universal build ships both x86_64
+and arm64 slices.
+
+### Application icon
+
+`build/icon.svg` is the source of truth. `npm run icon` renders it to `build/icon.png`
+(1024x1024) using headless Chrome, and electron-builder converts that into `.icns` and
+`.ico` at package time. Edit the SVG, re-run `npm run icon`, rebuild.
+
+Check small sizes after any edit. Interior detail that reads well at 512 turns to mush by
+32px, which is where the icon actually lives in a Dock or a Finder list.
 
 ---
 
@@ -70,25 +81,10 @@ to earn it over time.
 Until signed, the app only runs on machines where the quarantine attribute is cleared by
 hand — fine for your own use, not for distribution.
 
-### 2. Application icon — cosmetic but obvious
+### 2. Nothing else blocks a macOS build
 
-```
-default Electron icon is used  reason=application icon is not set
-```
-
-Add `build/icon.icns` (macOS) and `build/icon.ico` (Windows), 1024×1024 source. Shipping
-with the Electron logo reads as unfinished.
-
-### 3. Architecture coverage
-
-The current build is `arm64` only — it will not run on Intel Macs.
-
-```bash
-npx electron-builder --mac --universal   # one binary, both architectures
-npx electron-builder --mac --x64         # Intel only
-```
-
-Universal builds are roughly double the size.
+Builds are universal (`x86_64 arm64`), so Intel and Apple Silicon are both covered, and
+the app carries its own icon. Signing is the only remaining hard blocker.
 
 ---
 
@@ -99,12 +95,12 @@ read from **inside `app.asar`** rather than from disk. Check these explicitly:
 
 ```bash
 # The web bundle is actually packed
-npx asar list "release/mac-arm64/Entity Map.app/Contents/Resources/app.asar" \
+npx asar list "release/mac-universal/Entity Map.app/Contents/Resources/app.asar" \
   | grep browser/index.html
 
 # It launches and serves (note: strip ELECTRON_RUN_AS_NODE, see DEVELOPMENT.md)
 env -u ELECTRON_RUN_AS_NODE \
-  "release/mac-arm64/Entity Map.app/Contents/MacOS/Entity Map"
+  "release/mac-universal/Entity Map.app/Contents/MacOS/Entity Map"
 curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:43117/
 
 # Storage did not fork — the app must read <appData>/entity-map,
