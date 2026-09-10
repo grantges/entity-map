@@ -69,13 +69,37 @@ export CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 ### Releasing
 
+The version is bumped **on `dev`, through a PR**, before `main` is touched. `main` then
+fast-forwards and needs no commit of its own.
+
 ```bash
+# 1. Bump on a branch off dev, and open a PR like any other change.
+git checkout dev && git pull
+git checkout -b chore/release-v1.2.3
+npm version <patch|minor|major> --no-git-tag-version
+git commit -am "Release v1.2.3"
+git push -u origin chore/release-v1.2.3
+gh pr create --base dev
+
+# 2. Once that PR is merged, main is a pure fast-forward.
 git checkout main && git pull
-git merge --ff-only dev
-npm version <patch|minor|major>
-git push && git push --tags
-npm run dist:mac    # see docs/DISTRIBUTION.md
+git merge --ff-only origin/dev
+git tag -a v1.2.3 -m "Release v1.2.3"
+git push origin main --follow-tags
+
+# 3. Build and publish.
+npm run dist:mac                       # see docs/DISTRIBUTION.md
+gh release create v1.2.3 --title "..." --notes "..." \
+  "release/Entity Map-1.2.3-universal.dmg" \
+  "release/Entity Map-1.2.3-universal-mac.zip"
 ```
+
+**Why the bump happens on `dev` and not on `main`.** Bumping on `main` creates a commit
+that `dev` does not have, so `dev` has to be re-synced afterwards by pushing directly to
+it. `dev` requires the `verify` status check, and a direct push bypasses that rule — the
+push succeeds, but it prints `Bypassed rule violations for refs/heads/dev` and the commit
+lands unverified. Bumping on `dev` first removes the sync-back entirely: `main` only ever
+fast-forwards, and nothing is ever pushed to `dev` outside a PR.
 
 ---
 
